@@ -1,8 +1,6 @@
 import heapq
 from enum import Enum
 
-from numpy import positive
-
 
 class Direction(Enum):
     UP = (-1, 0)
@@ -59,14 +57,9 @@ def compute_heuristics(my_map, goal):
 
 
 def build_constraint_table(constraints, agent):
-    ##############################
-    # Task 1.2/1.3: Return a table that constains the list of constraints of
-    #               the given agent for each time step. The table can be used
-    #               for a more efficient constraint violation check in the
-    #               is_constrained function.
-
     constraint_table = dict()
-    constraint_table[-1] = []   # Constraints that always apply in future timesteps
+    # Constraints that always apply in future timesteps
+    constraint_table[-1] = []
     for constraint in constraints:
         positive = 'positive' in constraint and constraint['positive']
         if constraint['agent'] != agent and not positive:
@@ -78,7 +71,7 @@ def build_constraint_table(constraints, agent):
             constraint['positive'] = False
             constraint['agent'] = agent
             constraint['loc'] = constraint['loc'][::-1]
-        
+
         timestep = constraint['timestep']
         if timestep not in constraint_table:
             constraint_table[timestep] = []
@@ -111,27 +104,22 @@ def get_path(goal_node):
 
 
 def is_constrained(curr_loc, next_loc, next_time, constraint_table):
-    ##############################
-    # Task 1.2/1.3: Check if a move from curr_loc to next_loc at time step next_time violates
-    #               any given constraint. For efficiency the constraints are indexed in a constraint_table
-    #               by time step, see build_constraint_table.
-
     constraints = []
     for constraint in constraint_table[-1]:
         if next_time < constraint['timestep']:
             continue
-        
+
         constraints.append(constraint)
 
     if next_time in constraint_table:
         constraints += constraint_table[next_time]
-        
+
     for constraint in constraints:
         positive = 'positive' in constraint and constraint['positive']
         loc_constraint = constraint['loc']
         match = (len(loc_constraint) == 1 and loc_constraint[0] == next_loc) \
             or (len(loc_constraint) == 2 and (loc_constraint[0] == curr_loc and loc_constraint[1] == next_loc))
-        
+
         # Check vertex and edge constraint
         if match and not positive:
             return True
@@ -153,6 +141,20 @@ def pop_node(open_list):
     return curr
 
 
+def pop_multiple_nodes(open_list):
+    cost, _, _, curr = heapq.heappop(open_list)
+    nodes = [curr]
+    while len(open_list) > 0:
+        next_cost, _, _, next = heapq.heappop(open_list)
+        if next_cost == cost:
+            nodes.append(next)
+        else:
+            push_node(open_list, next)
+            break
+
+    return nodes
+
+
 def compare_nodes(n1, n2):
     """Return true is n1 is better than n2."""
     return n1['g_val'] + n1['h_val'] < n2['g_val'] + n2['h_val']
@@ -166,16 +168,13 @@ def a_star(my_map, start_loc, goal_loc, h_values, agent, constraints):
         constraints - constraints defining where robot should or cannot go at each timestep
     """
 
-    ##############################
-    # Task 1.1: Extend the A* search to search in the space-time domain
-    #           rather than space domain, only.
-
     env_size = len(my_map) * len(my_map[0])
     open_list = []
     closed_list: dict[tuple[tuple, int], dict] = dict()
     earliest_goal_timestep = 0
     constraint_table = build_constraint_table(constraints, agent)
-    last_constraint_time = max(list(constraint_table)) if constraint_table else 0
+    last_constraint_time = max(
+        list(constraint_table)) if constraint_table else 0
     h_value = h_values[start_loc]
     root = {
         'loc': start_loc,
@@ -187,50 +186,66 @@ def a_star(my_map, start_loc, goal_loc, h_values, agent, constraints):
     push_node(open_list, root)
     closed_list[(root['loc'], 0)] = root
 
-    potentials = []
+    mdd = []
+    path = None
     while len(open_list) > 0:
-        curr = pop_node(open_list)
-        #############################
-        # Task 1.4: Adjust the goal test condition to handle goal constraints
-        path = get_path(curr)
-        if len(path) > env_size * 5:
-            # It's unlikely that there is a valid solution greater than 5 times the env size
-            break
+        nodes = pop_multiple_nodes(open_list)
+        mdd_local: dict[tuple[tuple, int], dict] = dict()
+        for curr in nodes:
+            if curr['time'] > env_size * 5 + last_constraint_time:
+                # It's unlikely that there is a valid solution greater than 5
+                # times the env size
+                break
 
-        if curr['loc'] == goal_loc and curr['time'] >= last_constraint_time:
-            return path
-
-        potentials_local = []
-        for dir in Direction:
-            child_loc = move(curr['loc'], dir)
-            out_of_bound = child_loc[0] >= len(my_map) or child_loc[1] >= len(my_map[0]) or child_loc[0] < 0 or child_loc[1] < 0
-            if out_of_bound or my_map[child_loc[0]][child_loc[1]]:
+            if curr['loc'] == goal_loc and curr['time'] >= last_constraint_time:
+                path = get_path(curr)
                 continue
 
-            child = {
-                'loc': child_loc,
-                'g_val': curr['g_val'] + 1,
-                'h_val': h_values[child_loc],
-                'parent': curr,
-                'time': curr['time'] + 1
-            }
+            for dir in Direction:
+                child_loc = move(curr['loc'], dir)
+                out_of_bound = child_loc[0] >= len(my_map) \
+                    or child_loc[1] >= len(my_map[0]) \
+                    or child_loc[0] < 0 \
+                    or child_loc[1] < 0
+                if out_of_bound or my_map[child_loc[0]][child_loc[1]]:
+                    continue
 
-            potentials_local.append({'loc': child_loc, 'h': h_values[child_loc], 'prev': curr['loc']})
+                child_h = h_values[child_loc]
+                child = {
+                    'loc': child_loc,
+                    'g_val': curr['g_val'] + 1,
+                    'h_val': child_h,
+                    'parent': curr,
+                    'time': curr['time'] + 1
+                }
 
-            if is_constrained(curr['loc'], child['loc'], child['time'], constraint_table):
-                continue
+                if (child_loc, child_h) in mdd_local:
+                    mdd_local[(child_loc, child_h)]['prev'].append(curr['loc'])
+                else:
+                    mdd_local[(child_loc, child_h)] = {
+                        'loc': child_loc,
+                        'h': child_h,
+                        'prev': [curr['loc']]
+                    }
 
-            space_time = (child['loc'], child['time'])
-            if space_time in closed_list:
-                existing_node = closed_list[space_time]
-                if compare_nodes(child, existing_node):
+                if is_constrained(curr['loc'], child['loc'],
+                                  child['time'], constraint_table):
+                    continue
+
+                space_time = (child['loc'], child['time'])
+                if space_time in closed_list:
+                    existing_node = closed_list[space_time]
+                    if compare_nodes(child, existing_node):
+                        closed_list[space_time] = child
+                        push_node(open_list, child)
+                else:
                     closed_list[space_time] = child
                     push_node(open_list, child)
-            else:
-                closed_list[space_time] = child
-                push_node(open_list, child)
 
-        local_min = min(potentials_local, key=lambda x: x['h'])
-        potentials.append([a for a in potentials_local if a['h'] == local_min['h']])
+        if path:
+            return path, mdd
+
+        local_min = min(mdd_local.values(), key=lambda x: x['h'])
+        mdd.append([v for v in mdd_local.values() if v['h'] == local_min['h']])
 
     return None  # Failed to find solutions
