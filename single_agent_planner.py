@@ -1,7 +1,9 @@
 import heapq
-from pprint import pprint 
+from pprint import pprint
+
+
 def move(loc, dir):
-    directions = [(0, -1), (1, 0), (0, 1), (-1, 0), (0, 0)] ####1.1.3############################
+    directions = [(0, -1), (1, 0), (0, 1), (-1, 0), (0, 0)]
     return loc[0] + directions[dir][0], loc[1] + directions[dir][1]
 
 
@@ -25,8 +27,8 @@ def compute_heuristics(my_map, goal):
             child_loc = move(loc, dir)
             child_cost = cost + 1
             if child_loc[0] < 0 or child_loc[0] >= len(my_map) \
-               or child_loc[1] < 0 or child_loc[1] >= len(my_map[0]):
-               continue
+                or child_loc[1] < 0 or child_loc[1] >= len(my_map[0]):
+                continue
             if my_map[child_loc[0]][child_loc[1]]:
                 continue
             child = {'loc': child_loc, 'cost': child_cost}
@@ -49,7 +51,8 @@ def compute_heuristics(my_map, goal):
 
 def build_constraint_table(constraints, agent):
     ##########################
-    # Build constraint table whether there is a 'positive' key in constraints or not
+    # Build constraint table whether there is a 'positive' key in constraints
+    # or not
     table = dict()
     for constraint in constraints:
         if "positive" not in constraint:
@@ -57,7 +60,7 @@ def build_constraint_table(constraints, agent):
                 if (constraint['timestep'], False) not in table:
                     table[(constraint['timestep'], False)] = []
                 table[(constraint['timestep'], False)].append(constraint['loc'])
-        else:   
+        else:
             if constraint['agent'] != agent and constraint['positive'] == True:
                 if (constraint['timestep'], False) not in table:
                     table[(constraint['timestep'], False)] = []
@@ -82,6 +85,7 @@ def build_constraint_table(constraints, agent):
 
     return table
 
+
 def get_location(path, time):
     if time < 0:
         return path[0]
@@ -90,6 +94,7 @@ def get_location(path, time):
     else:
         return path[-1]  # wait at the goal location
 
+
 def get_mdd_nodes(mdd, time):
     if time < 0:
         return mdd[0]
@@ -97,6 +102,7 @@ def get_mdd_nodes(mdd, time):
         return mdd[time]
     else:
         return mdd[-1]
+
 
 def get_path(goal_node):
     path = []
@@ -115,20 +121,22 @@ def is_constrained(curr_loc, next_loc, next_time, constraint_table):
     flag3 = False
 
     if (next_time, False) in constraint_table:
-        flag1 = ([next_loc] in constraint_table[(next_time, False)]) or ([curr_loc, next_loc] in constraint_table[(next_time, False)])
+        flag1 = ([next_loc] in constraint_table[(next_time, False)]) or (
+            [curr_loc, next_loc] in constraint_table[(next_time, False)])
     else:
         # check additional constraints
-        # the time that agents with higher priorities reached their goal locations
+        # the time that agents with higher priorities reached their goal
+        # locations
         time = []
         for t, loc in constraint_table.items():
             if [next_loc] in loc and t[0] < 0:
                 time.append(t[0])
         flag2 = any(next_time > -t for t in time)
 
-
     if (next_time, True) in constraint_table:
-        flag3 = ([next_loc] not in constraint_table[(next_time, True)]) and ([curr_loc, next_loc] not in constraint_table[(next_time, True)])
-    
+        flag3 = ([next_loc] not in constraint_table[(next_time, True)]) and (
+            [curr_loc, next_loc] not in constraint_table[(next_time, True)])
+
     return flag1 or flag2 or flag3
 
 # def push_node(open_list, node):
@@ -138,11 +146,19 @@ def is_constrained(curr_loc, next_loc, next_time, constraint_table):
 #     _, _, _,curr = heapq.heappop(open_list)
 #     return curr
 
+
 def push_node(open_list, node):
-    heapq.heappush(open_list, (node['g_val'] + node['h_val'], node['h_val'], node['loc'], tuple(get_path(node)), node))
+    key_tup = (
+        node['g_val'] + node['h_val'],
+        node['h_val'],
+        node['loc'],
+        tuple(get_path(node)),
+        node)
+    heapq.heappush(open_list, key_tup)
+
 
 def pop_node(open_list):
-    _, _, _, _,curr = heapq.heappop(open_list)
+    _, _, _, _, curr = heapq.heappop(open_list)
     return curr
 
 
@@ -151,86 +167,13 @@ def compare_nodes(n1, n2):
     return n1['g_val'] + n1['h_val'] < n2['g_val'] + n2['h_val']
 
 
-def a_star(my_map, start_loc, goal_loc, h_values, agent, constraints):
-    return None
-#     """ my_map      - binary obstacle map
-#         start_loc   - start position
-#         goal_loc    - goal position
-#         agent       - the agent that is being re-planned
-#         constraints - constraints defining where robot should or cannot go at each timestep
-#     """
-#     ##############################
-#     # Task 1.1: Extend the A* search to search in the space-time domain
-#     #           rather than space domain, only.
-#     open_list = []
-#     closed_list = dict()
-#     earliest_goal_timestep = 0
-#     h_value = h_values[start_loc]
-#     constraint_table = build_constraint_table(constraints, agent) 
-    
-#     if constraint_table:
-
-#         t_occupy_goal = []  
-#         for time, loc in constraint_table.items():
-#             if [goal_loc] in loc:
-#                 t_occupy_goal.append(time[0])
-#         if t_occupy_goal:
-#             earliest_goal_timestep = max(t_occupy_goal) + 1
-   
-#     max_path_length = 0
-#     if constraint_table:
-#         length = max(constraint_table)
-#         max_path_length += length[0]
-#     max_path_length += len(my_map)*len(my_map[0])
-
-#     root = {'loc': start_loc, 'g_val': 0, 'h_val': h_value, 'parent': None, 'timestep': 0}
-#     push_node(open_list, root)
-#     closed_list[(root['loc'], root['timestep'])] = root 
-
-#     while len(open_list) > 0:
-
-#         curr = pop_node(open_list)
- 
-#         if get_sum_of_cost(get_path(curr)) > max_path_length:
-#             break
-#         #############################
-#         # Task 1.4: Adjust the goal test condition to handle goal constraints
-#         if curr['loc'] == goal_loc and curr['timestep'] >= earliest_goal_timestep:
-#             return get_path(curr)
-#         for dir in range(5):
-#             child_loc = move(curr['loc'], dir)
-#             if child_loc[0] < 0 or child_loc[0] >= len(my_map) \
-#                or child_loc[1] < 0 or child_loc[1] >= len(my_map[0]):
-#                continue
-#             if my_map[child_loc[0]][child_loc[1]]: #hits obstacle
-#                 continue
-#             child = {'loc': child_loc,
-#                     'g_val': curr['g_val'] + 1,
-#                     'h_val': h_values[child_loc],
-#                     'parent': curr,
-#                     'timestep': curr['timestep'] + 1}
-#             if is_constrained(curr['loc'], child['loc'], child['timestep'], constraint_table):
-#                 continue
-            
-#             if (child['loc'], child['timestep']) in closed_list: 
-#                 existing_node = closed_list[(child['loc'], child['timestep'])] 
-#                 if compare_nodes(child, existing_node):
-#                     closed_list[(child['loc'], child['timestep'])] = child
-#                     push_node(open_list, child)
-#             else:
-#                 closed_list[(child['loc'], child['timestep'])] = child
-#                 push_node(open_list, child)
-
-#     return None  # Failed to find solutions
-
-
 def build_mdd(path, mdd):
     for timestep in range(len(path)):
         if timestep == len(path) - 1:
             child = None
         else:
-            child = path[timestep+1]
-        
+            child = path[timestep + 1]
+
         new_node = True
         for node in mdd[timestep]:
             if path[timestep] == node['loc']:
@@ -239,7 +182,7 @@ def build_mdd(path, mdd):
                     node['child'].append(child)
                 break
 
-        if new_node :
+        if new_node:
             curr = {'loc': path[timestep], 'child': [child]}
             mdd[timestep].append(curr)
 
@@ -261,37 +204,42 @@ def mdd(my_map, start_loc, goal_loc, h_values, agent, constraints):
     earliest_goal_timestep = 0
     h_value = h_values[start_loc]
     constraint_table = build_constraint_table(constraints, agent)
-    
+
     if constraint_table:
-        t_occupy_goal = []  
+        t_occupy_goal = []
         for time, loc in constraint_table.items():
             if [goal_loc] in loc:
                 t_occupy_goal.append(time[0])
-        
+
         if t_occupy_goal:
             earliest_goal_timestep = max(t_occupy_goal) + 1
-   
+
     max_path_length = 0
     if constraint_table:
         length = max(constraint_table)
         max_path_length += length[0]
-    max_path_length += len(my_map)*len(my_map[0])
+    max_path_length += len(my_map) * len(my_map[0])
 
-    root = {'loc': start_loc, 'g_val': 0, 'h_val': h_value, 'parent': None, 'timestep': 0}
+    root = {
+        'loc': start_loc,
+        'g_val': 0,
+        'h_val': h_value,
+        'parent': None,
+        'timestep': 0,
+    }
     push_node(open_list, root)
-    closed_list[(root['loc'], root['timestep'])] = root 
+    closed_list[(root['loc'], root['timestep'])] = root
 
     while len(open_list) > 0:
-    
+
         curr = pop_node(open_list)
-           
+
         if get_sum_of_cost(get_path(curr)) > max_path_length:
             break
 
-
         if curr['loc'] == goal_loc and curr['timestep'] >= earliest_goal_timestep:
             path = get_path(curr)
- 
+
             if min_len == -1:
                 min_len = len(path)
                 mdd = [[] for i in range(min_len)]
@@ -303,25 +251,26 @@ def mdd(my_map, start_loc, goal_loc, h_values, agent, constraints):
 
             # update the closed list
             p_list = []
-            for i in range(1,min_len):
+            for i in range(1, min_len):
                 p_list.append(path[i])
                 if (path[i], i, tuple(p_list)) in closed_list:
                     del closed_list[(path[i], i, tuple(p_list))]
             continue
 
-            
         for dir in range(5):
             child_loc = move(curr['loc'], dir)
             if child_loc[0] < 0 or child_loc[0] >= len(my_map) \
                or child_loc[1] < 0 or child_loc[1] >= len(my_map[0]):
-               continue
-            if my_map[child_loc[0]][child_loc[1]]: #hits obstacle
                 continue
-            child = {'loc': child_loc,
-                    'g_val': curr['g_val'] + 1,
-                    'h_val': h_values[child_loc],
-                    'parent': curr,
-                    'timestep': curr['timestep'] + 1}
+            if my_map[child_loc[0]][child_loc[1]]:  # hits obstacle
+                continue
+            child = {
+                'loc': child_loc,
+                'g_val': curr['g_val'] + 1,
+                'h_val': h_values[child_loc],
+                'parent': curr,
+                'timestep': curr['timestep'] + 1,
+            }
             if is_constrained(curr['loc'], child['loc'], child['timestep'], constraint_table):
                 continue
             
@@ -343,9 +292,8 @@ def find_mdd_path(mdd):
 
     path = []
     for timestep in range(len(mdd)):
-        path.append(get_mdd_nodes(mdd,timestep)[0]['loc'])
+        path.append(get_mdd_nodes(mdd, timestep)[0]['loc'])
     return path
-
 
 
 # mdds: [mdd1, mdd2, ..., mddn]
@@ -362,22 +310,23 @@ def cardinal_conflict_graph(mdds):
                 continue
             mdd2 = mdds[j]
             for timestep in range(max(len(mdd1), len(mdd2))):
-                    # vertex conflict
-                if len(get_mdd_nodes(mdd1,timestep)) == len(get_mdd_nodes(mdd2,timestep)) == 1 and get_mdd_nodes(mdd1,timestep)[0]['loc'] == get_mdd_nodes(mdd2,timestep)[0]['loc']:
+                # vertex conflict
+                if len(get_mdd_nodes(mdd1, timestep)) == len(get_mdd_nodes(mdd2, timestep)) == 1 and get_mdd_nodes(
+                        mdd1, timestep)[0]['loc'] == get_mdd_nodes(mdd2, timestep)[0]['loc']:
                     #print("vertex",i," ", j, " ",timestep)
                     ccg[i].append(j)
                     break
                 # edge conflict
                 if timestep > 0:
-                    if len(get_mdd_nodes(mdd1,timestep-1)) == len(get_mdd_nodes(mdd1,timestep)) == len(get_mdd_nodes(mdd2,timestep-1)) == len(get_mdd_nodes(mdd2,timestep)) == 1 and\
-                        get_mdd_nodes(mdd1,timestep-1)[0]['loc'] == get_mdd_nodes(mdd2,timestep)[0]['loc'] and get_mdd_nodes(mdd1,timestep)[0]['loc'] == get_mdd_nodes(mdd2,timestep-1)[0]['loc']:
+                    if len(get_mdd_nodes(mdd1, timestep - 1)) == len(get_mdd_nodes(mdd1, timestep)) == len(get_mdd_nodes(mdd2, timestep - 1)) == len(get_mdd_nodes(mdd2, timestep)) == 1 and\
+                            get_mdd_nodes(mdd1, timestep - 1)[0]['loc'] == get_mdd_nodes(mdd2, timestep)[0]['loc'] and get_mdd_nodes(mdd1, timestep)[0]['loc'] == get_mdd_nodes(mdd2, timestep - 1)[0]['loc']:
                         #print("edge",i," ",j," ",timestep)
                         ccg[i].append(j)
                         break
 
     return ccg
 
-            
+
 def is_cardinal_conflict(collision, mdds):
     a1 = collision['a1']
     a2 = collision['a2']
@@ -387,16 +336,17 @@ def is_cardinal_conflict(collision, mdds):
     mdd2 = mdds[a2]
 
     # vertex conflict
-    if len(loc) == 1 and len(get_mdd_nodes(mdd1,timestep)) == len(get_mdd_nodes(mdd2,timestep)) == 1 and\
-        get_mdd_nodes(mdd1,timestep)[0]['loc'] == get_mdd_nodes(mdd2,timestep)[0]['loc'] == loc:
+    if len(loc) == 1 and len(get_mdd_nodes(mdd1, timestep)) == len(get_mdd_nodes(mdd2, timestep)) == 1 and\
+            get_mdd_nodes(mdd1, timestep)[0]['loc'] == get_mdd_nodes(mdd2, timestep)[0]['loc'] == loc:
         return True
     # edge conflict
     if timestep > 0 and len(loc) == 2:
-        if len(get_mdd_nodes(mdd1,timestep-1)) == len(get_mdd_nodes(mdd1,timestep)) == len(get_mdd_nodes(mdd2,timestep-1)) == len(get_mdd_nodes(mdd2,timestep)) == 1 and\
-            get_mdd_nodes(mdd1,timestep-1)[0]['loc'] == get_mdd_nodes(mdd2,timestep)[0]['loc'] == loc[0] and\
-            get_mdd_nodes(mdd1,timestep)[0]['loc'] == get_mdd_nodes(mdd2,timestep-1)[0]['loc'] == loc[1]:
+        if len(get_mdd_nodes(mdd1, timestep - 1)) == len(get_mdd_nodes(mdd1, timestep)) == len(get_mdd_nodes(mdd2, timestep - 1)) == len(get_mdd_nodes(mdd2, timestep)) == 1 and\
+                get_mdd_nodes(mdd1, timestep - 1)[0]['loc'] == get_mdd_nodes(mdd2, timestep)[0]['loc'] == loc[0] and\
+                get_mdd_nodes(mdd1, timestep)[0]['loc'] == get_mdd_nodes(mdd2, timestep - 1)[0]['loc'] == loc[1]:
             return True
     return False
+
 
 def is_non_cardinal_conflict(collision, mdds):
 
@@ -408,14 +358,21 @@ def is_non_cardinal_conflict(collision, mdds):
     mdd2 = mdds[a2]
 
     # vertex conflict
-    if len(loc) == 1 and len(get_mdd_nodes(mdd1,timestep)) == len(get_mdd_nodes(mdd2,timestep)) == 1 or get_mdd_nodes(mdd1,timestep)[0]['loc'] == get_mdd_nodes(mdd2,timestep)[0]['loc'] == loc:
+    if len(loc) == 1 \
+        and len(get_mdd_nodes(mdd1, timestep)) == len(get_mdd_nodes(mdd2, timestep)) == 1 \
+        or get_mdd_nodes(mdd1, timestep)[0]['loc'] == get_mdd_nodes(mdd2, timestep)[0]['loc'] == loc:
         return False
     # edge conflict
     if timestep > 0 and len(loc) == 2:
-        if len(get_mdd_nodes(mdd1,timestep-1)) == len(get_mdd_nodes(mdd1,timestep)) == 1 and get_mdd_nodes(mdd1,timestep-1)[0]['loc'] == loc[0] and get_mdd_nodes(mdd1,timestep)[0]['loc']  == loc[1] or\
-        len(get_mdd_nodes(mdd2,timestep-1)) == len(get_mdd_nodes(mdd2,timestep)) == 1 and get_mdd_nodes(mdd2,timestep)[0]['loc'] == loc[0] and get_mdd_nodes(mdd2,timestep-1)[0]['loc'] == loc[1]:
+        if len(get_mdd_nodes(mdd1, timestep - 1)) == len(get_mdd_nodes(mdd1, timestep)) == 1 \
+            and get_mdd_nodes(mdd1, timestep - 1)[0]['loc'] == loc[0] \
+            and get_mdd_nodes(mdd1, timestep)[0]['loc'] == loc[1] \
+            or len(get_mdd_nodes(mdd2, timestep - 1)) == len(get_mdd_nodes(mdd2, timestep)) == 1 \
+            and get_mdd_nodes(mdd2, timestep)[0]['loc'] == loc[0] \
+            and get_mdd_nodes(mdd2, timestep - 1)[0]['loc'] == loc[1]:
             return False
     return True
+
 
 def h_cg(ccg):
     h = 0
@@ -423,21 +380,24 @@ def h_cg(ccg):
     sorted_ccg_vertex = sorted(ccg, key=lambda v: len(ccg[v]), reverse=True)
     vertex = sorted_ccg_vertex[0]
 
-    while len(ccg[vertex]) > 0: 
+    while len(ccg[vertex]) > 0:
         h += 1
         # label the vertex and remove it from ccg
         del ccg[vertex]
         for v in ccg:
             if vertex in ccg[v]:
                 ccg[v].remove(vertex)
-        sorted_ccg_vertex = sorted(ccg, key=lambda v: len(ccg[v]), reverse=True)
+        sorted_ccg_vertex = sorted(
+            ccg, key=lambda v: len(ccg[v]), reverse=True
+        )
         vertex = sorted_ccg_vertex[0]
-    #print(h)
+    # print(h)
     return h
 
 
 def dependency_graph(mdds):
     pass
+
 
 def h_dg(dg):
     pass
