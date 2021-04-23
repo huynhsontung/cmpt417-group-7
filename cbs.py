@@ -202,7 +202,7 @@ class CBSSolver(object):
                 'paths': [],
                 'collisions': []}
         for i in range(self.num_of_agents):  # Find initial path for each agent
-            path = a_star(self.my_map, self.starts[i], self.goals[i], self.heuristics[i],
+            path, mdd = a_star(self.my_map, self.starts[i], self.goals[i], self.heuristics[i],
                           i, root['constraints'])
             if path is None:
                 raise BaseException('No solutions')
@@ -218,15 +218,6 @@ class CBSSolver(object):
         # Task 3.2: Testing
         for collision in root['collisions']:
             print(disjoint_splitting(collision))
-
-        ##############################
-        # Task 3.3: High-Level Search
-        #           Repeat the following as long as the open list is not empty:
-        #             1. Get the next node from the open list (you can use self.pop_node()
-        #             2. If this node has no collision, return solution
-        #             3. Otherwise, choose the first collision and convert to a list of constraints (using your
-        #                standard_splitting function). Add a new child node to your open list for each constraint
-        #           Ensure to create a copy of any objects that your child nodes might inherit
 
         while len(self.open_list) > 0:
             curr = self.pop_node()
@@ -248,7 +239,7 @@ class CBSSolver(object):
                 agents = paths_violate_constraint(node['paths'], constraint)
                 has_solution = bool(agents)
                 for agent in agents:
-                    path = a_star(self.my_map, self.starts[agent], self.goals[agent], self.heuristics[agent], agent, node['constraints'])
+                    path, mdd = a_star(self.my_map, self.starts[agent], self.goals[agent], self.heuristics[agent], agent, node['constraints'])
                     if path:
                         node['paths'][agent] = path
                     else:
