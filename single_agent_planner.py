@@ -131,19 +131,19 @@ def is_constrained(curr_loc, next_loc, next_time, constraint_table):
     
     return flag1 or flag2 or flag3
 
-def push_node(open_list, node):
-    heapq.heappush(open_list, (node['g_val'] + node['h_val'], node['h_val'], node['loc'], node))
-
-def pop_node(open_list):
-    _, _, _,curr = heapq.heappop(open_list)
-    return curr
-
 # def push_node(open_list, node):
-#     heapq.heappush(open_list, (node['g_val'] + node['h_val'], node['h_val'], node['loc'], node['parent']['loc'], node))
+#     heapq.heappush(open_list, (node['g_val'] + node['h_val'], node['h_val'], node['loc'], node))
 
 # def pop_node(open_list):
-#     _, _, _, _,curr = heapq.heappop(open_list)
+#     _, _, _,curr = heapq.heappop(open_list)
 #     return curr
+
+def push_node(open_list, node):
+    heapq.heappush(open_list, (node['g_val'] + node['h_val'], node['h_val'], node['loc'], tuple(get_path(node)), node))
+
+def pop_node(open_list):
+    _, _, _, _,curr = heapq.heappop(open_list)
+    return curr
 
 
 def compare_nodes(n1, n2):
@@ -152,75 +152,76 @@ def compare_nodes(n1, n2):
 
 
 def a_star(my_map, start_loc, goal_loc, h_values, agent, constraints):
-    """ my_map      - binary obstacle map
-        start_loc   - start position
-        goal_loc    - goal position
-        agent       - the agent that is being re-planned
-        constraints - constraints defining where robot should or cannot go at each timestep
-    """
-    ##############################
-    # Task 1.1: Extend the A* search to search in the space-time domain
-    #           rather than space domain, only.
-    open_list = []
-    closed_list = dict()
-    earliest_goal_timestep = 0
-    h_value = h_values[start_loc]
-    constraint_table = build_constraint_table(constraints, agent) 
+    return None
+#     """ my_map      - binary obstacle map
+#         start_loc   - start position
+#         goal_loc    - goal position
+#         agent       - the agent that is being re-planned
+#         constraints - constraints defining where robot should or cannot go at each timestep
+#     """
+#     ##############################
+#     # Task 1.1: Extend the A* search to search in the space-time domain
+#     #           rather than space domain, only.
+#     open_list = []
+#     closed_list = dict()
+#     earliest_goal_timestep = 0
+#     h_value = h_values[start_loc]
+#     constraint_table = build_constraint_table(constraints, agent) 
     
-    if constraint_table:
+#     if constraint_table:
 
-        t_occupy_goal = []  
-        for time, loc in constraint_table.items():
-            if [goal_loc] in loc:
-                t_occupy_goal.append(time[0])
-        if t_occupy_goal:
-            earliest_goal_timestep = max(t_occupy_goal) + 1
+#         t_occupy_goal = []  
+#         for time, loc in constraint_table.items():
+#             if [goal_loc] in loc:
+#                 t_occupy_goal.append(time[0])
+#         if t_occupy_goal:
+#             earliest_goal_timestep = max(t_occupy_goal) + 1
    
-    max_path_length = 0
-    if constraint_table:
-        length = max(constraint_table)
-        max_path_length += length[0]
-    max_path_length += len(my_map)*len(my_map[0])
+#     max_path_length = 0
+#     if constraint_table:
+#         length = max(constraint_table)
+#         max_path_length += length[0]
+#     max_path_length += len(my_map)*len(my_map[0])
 
-    root = {'loc': start_loc, 'g_val': 0, 'h_val': h_value, 'parent': None, 'timestep': 0}
-    push_node(open_list, root)
-    closed_list[(root['loc'], root['timestep'])] = root 
+#     root = {'loc': start_loc, 'g_val': 0, 'h_val': h_value, 'parent': None, 'timestep': 0}
+#     push_node(open_list, root)
+#     closed_list[(root['loc'], root['timestep'])] = root 
 
-    while len(open_list) > 0:
+#     while len(open_list) > 0:
 
-        curr = pop_node(open_list)
+#         curr = pop_node(open_list)
  
-        if get_sum_of_cost(get_path(curr)) > max_path_length:
-            break
-        #############################
-        # Task 1.4: Adjust the goal test condition to handle goal constraints
-        if curr['loc'] == goal_loc and curr['timestep'] >= earliest_goal_timestep:
-            return get_path(curr)
-        for dir in range(5):
-            child_loc = move(curr['loc'], dir)
-            if child_loc[0] < 0 or child_loc[0] >= len(my_map) \
-               or child_loc[1] < 0 or child_loc[1] >= len(my_map[0]):
-               continue
-            if my_map[child_loc[0]][child_loc[1]]: #hits obstacle
-                continue
-            child = {'loc': child_loc,
-                    'g_val': curr['g_val'] + 1,
-                    'h_val': h_values[child_loc],
-                    'parent': curr,
-                    'timestep': curr['timestep'] + 1}
-            if is_constrained(curr['loc'], child['loc'], child['timestep'], constraint_table):
-                continue
+#         if get_sum_of_cost(get_path(curr)) > max_path_length:
+#             break
+#         #############################
+#         # Task 1.4: Adjust the goal test condition to handle goal constraints
+#         if curr['loc'] == goal_loc and curr['timestep'] >= earliest_goal_timestep:
+#             return get_path(curr)
+#         for dir in range(5):
+#             child_loc = move(curr['loc'], dir)
+#             if child_loc[0] < 0 or child_loc[0] >= len(my_map) \
+#                or child_loc[1] < 0 or child_loc[1] >= len(my_map[0]):
+#                continue
+#             if my_map[child_loc[0]][child_loc[1]]: #hits obstacle
+#                 continue
+#             child = {'loc': child_loc,
+#                     'g_val': curr['g_val'] + 1,
+#                     'h_val': h_values[child_loc],
+#                     'parent': curr,
+#                     'timestep': curr['timestep'] + 1}
+#             if is_constrained(curr['loc'], child['loc'], child['timestep'], constraint_table):
+#                 continue
             
-            if (child['loc'], child['timestep']) in closed_list: 
-                existing_node = closed_list[(child['loc'], child['timestep'])] 
-                if compare_nodes(child, existing_node):
-                    closed_list[(child['loc'], child['timestep'])] = child
-                    push_node(open_list, child)
-            else:
-                closed_list[(child['loc'], child['timestep'])] = child
-                push_node(open_list, child)
+#             if (child['loc'], child['timestep']) in closed_list: 
+#                 existing_node = closed_list[(child['loc'], child['timestep'])] 
+#                 if compare_nodes(child, existing_node):
+#                     closed_list[(child['loc'], child['timestep'])] = child
+#                     push_node(open_list, child)
+#             else:
+#                 closed_list[(child['loc'], child['timestep'])] = child
+#                 push_node(open_list, child)
 
-    return None  # Failed to find solutions
+#     return None  # Failed to find solutions
 
 
 def build_mdd(path, mdd):
@@ -281,16 +282,16 @@ def mdd(my_map, start_loc, goal_loc, h_values, agent, constraints):
     closed_list[(root['loc'], root['timestep'])] = root 
 
     while len(open_list) > 0:
-        
+    
         curr = pop_node(open_list)
-
+           
         if get_sum_of_cost(get_path(curr)) > max_path_length:
             break
 
 
         if curr['loc'] == goal_loc and curr['timestep'] >= earliest_goal_timestep:
             path = get_path(curr)
-            
+ 
             if min_len == -1:
                 min_len = len(path)
                 mdd = [[] for i in range(min_len)]
@@ -301,9 +302,11 @@ def mdd(my_map, start_loc, goal_loc, h_values, agent, constraints):
             mdd = build_mdd(path, mdd)
 
             # update the closed list
-            for i in range(min_len):
-                if (path[i], i) in closed_list:
-                    del closed_list[(path[i], i)]
+            p_list = []
+            for i in range(1,min_len):
+                p_list.append(path[i])
+                if (path[i], i, tuple(p_list)) in closed_list:
+                    del closed_list[(path[i], i, tuple(p_list))]
             continue
 
             
@@ -322,13 +325,13 @@ def mdd(my_map, start_loc, goal_loc, h_values, agent, constraints):
             if is_constrained(curr['loc'], child['loc'], child['timestep'], constraint_table):
                 continue
             
-            if (child['loc'], child['timestep']) in closed_list: 
-                existing_node = closed_list[(child['loc'], child['timestep'])] 
+            if (child['loc'], child['timestep'], tuple(get_path(child))) in closed_list: 
+                existing_node = closed_list[(child['loc'], child['timestep'], tuple(get_path(child)))] 
                 if compare_nodes(child, existing_node):
-                    closed_list[(child['loc'], child['timestep'])] = child
+                    closed_list[(child['loc'], child['timestep'], tuple(get_path(child)))] = child
                     push_node(open_list, child)
             else:
-                closed_list[(child['loc'], child['timestep'])] = child
+                closed_list[(child['loc'], child['timestep'], tuple(get_path(child)))] = child
                 push_node(open_list, child)
 
     return None  # Failed to find solutions
