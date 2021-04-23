@@ -163,7 +163,7 @@ class CBSSolver(object):
         self.num_of_expanded += 1
         return node
 
-    def find_solution(self, disjoint=True):
+    def find_solution(self, disjoint=True, stats={}):
         """ Finds paths for all agents from their start locations to their goal locations
 
         disjoint    - use disjoint splitting or not
@@ -218,6 +218,7 @@ class CBSSolver(object):
             if len(parent['collisions']) == 0:
                 self.print_results(parent)
                 print('Paths:',parent['paths'])
+                self.write_stats(stats, parent)
                 return parent['paths']
             
             #collision = parent['collisions'][0]
@@ -280,6 +281,13 @@ class CBSSolver(object):
         #############################
         # self.print_results(root)
         # return root['paths']
+
+
+    def write_stats(self, stats, node):
+        stats['cpu_time'] = timer.time() - self.start_time
+        stats['sum_cost'] = get_sum_of_cost(node['paths'])
+        stats['num_expanded'] = self.num_of_expanded
+        stats['num_generated'] = self.num_of_generated
 
 
     def print_results(self, node):

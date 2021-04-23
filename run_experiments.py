@@ -78,6 +78,7 @@ if __name__ == '__main__':
 
 
     result_file = open("results.csv", "w", buffering=1)
+    result_file.write("file,sum_cost,cpu_time,num_expanded,num_generated\n")
 
     for file in sorted(glob.glob(args.instance)):
 
@@ -87,10 +88,15 @@ if __name__ == '__main__':
 
         print("***Run CBS***")
         cbs = CBSSolver(my_map, starts, goals)
-        paths = cbs.find_solution(args.disjoint)
+        cbs_stats = {}
+        paths = cbs.find_solution(args.disjoint, stats=cbs_stats)
 
-        cost = get_sum_of_cost(paths)
-        result_file.write("{},{}\n".format(file, cost))
+        result_file.write("{},{},{},{},{}\n".format(
+            file, 
+            cbs_stats['sum_cost'],
+            cbs_stats['cpu_time'],
+            cbs_stats['num_expanded'],
+            cbs_stats['num_generated']))
 
 
         if not args.batch:
