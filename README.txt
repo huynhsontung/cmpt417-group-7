@@ -11,4 +11,4 @@ dg:
 python run_experiments.py --instance instances\exp.txt --h 2
 
 wdg:
-python run_experiments.py --instance instances\exp.txt --h 2
+python run_experiments.py --instance instances\exp.txt --h 3
