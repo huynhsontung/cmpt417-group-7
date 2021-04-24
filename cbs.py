@@ -7,12 +7,12 @@ from pprint import pprint
 
 
 def detect_collision(path1, path2):
-    ##############################
-    # Task 3.1: Return all the collisions that occurs between two robot paths (or None if there is no collision)
-    #           There are two types of collisions: vertex collision and edge collision.
-    #           A vertex collision occurs if both robots occupy the same location at the same timestep
-    # An edge collision occurs if the robots swap their location at the same
-    # timestep.
+    """
+    Return all the collisions that occurs between two robot paths (or None if there is no collision)
+    There are two types of collisions: vertex collision and edge collision.
+    A vertex collision occurs if both robots occupy the same location at the same timestep
+    An edge collision occurs if the robots swap their location at the same timestep.
+    """
     collisions = []
     length = max(len(path1), len(path2))
     for t in range(length):
@@ -34,12 +34,11 @@ def detect_collision(path1, path2):
 
 
 def detect_collisions(paths):
-    ##############################
-    # Task 3.1: Return a list of all collisions between all robot pairs.
-    #           A collision can be represented as dictionary that contains the id of the two robots, the vertex or edge
-    #           causing the collision, and the timestep at which the collision occurred.
-    # You should use your detect_collision function to find a collision
-    # between two robots.
+    """
+    Return a list of all collisions between all robot pairs.
+    A collision can be represented as dictionary that contains the id of the two robots,
+    the vertex or edge causing the collision, and the timestep at which the collision occurred.
+    """
     collisions_table = []
     for i in range(len(paths)):
         for j in range(i + 1, len(paths)):
@@ -69,14 +68,15 @@ def get_collision(collisions, mdds):
 
 
 def standard_splitting(collision):
-    ##############################
-    # Task 3.2: Return a list of (two) constraints to resolve the given collision
-    #           Vertex collision: the first constraint prevents the first agent to be at the specified location at the
-    #                            specified timestep, and the second constraint prevents the second agent to be at the
-    #                            specified location at the specified timestep.
-    #           Edge collision: the first constraint prevents the first agent to traverse the specified edge at the
-    #                          specified timestep, and the second constraint prevents the second agent to traverse the
-    #                          specified edge at the specified timestep
+    """
+    Return a list of (two) constraints to resolve the given collision
+    Vertex collision: the first constraint prevents the first agent to be at the specified location at the
+                     specified timestep, and the second constraint prevents the second agent to be at the
+                     specified location at the specified timestep.
+    Edge collision: the first constraint prevents the first agent to traverse the specified edge at the
+                   specified timestep, and the second constraint prevents the second agent to traverse the
+                   specified edge at the specified timestep
+    """
     constraints = []
     constraint1 = {
         'agent': collision['a1'],
@@ -96,15 +96,16 @@ def standard_splitting(collision):
 
 
 def disjoint_splitting(collision):
-    ##############################
-    # Task 4.1: Return a list of (two) constraints to resolve the given collision
-    #           Vertex collision: the first constraint enforces one agent to be at the specified location at the
-    #                            specified timestep, and the second constraint prevents the same agent to be at the
-    #                            same location at the timestep.
-    #           Edge collision: the first constraint enforces one agent to traverse the specified edge at the
-    #                          specified timestep, and the second constraint prevents the same agent to traverse the
-    #                          specified edge at the specified timestep
-    #           Choose the agent randomly
+    """
+    Return a list of (two) constraints to resolve the given collision
+    Vertex collision: the first constraint enforces one agent to be at the specified location at the
+                     specified timestep, and the second constraint prevents the same agent to be at the
+                     same location at the timestep.
+    Edge collision: the first constraint enforces one agent to traverse the specified edge at the
+                   specified timestep, and the second constraint prevents the same agent to traverse the
+                   specified edge at the specified timestep
+    Choose the agent randomly
+    """
 
     constraints = []
     agent = collision['a1']
@@ -128,10 +129,9 @@ def disjoint_splitting(collision):
 
 
 def paths_violate_constraint(constraint, paths):
-    #########################################
-    # Task 4.3: Return a list of agent ids of agents that violate a given
-    # positive constraint
-
+    """
+    Return a list of agent ids of agents that violate a given positive constraint
+    """
     ids = []
     for i in range(len(paths)):
         if i == constraint['agent']:
@@ -153,15 +153,15 @@ def paths_violate_constraint(constraint, paths):
 
     return ids
 
-def h_val(mdds, h, my_map):
-    
-    if h == 1: #icbs - h_cg
+
+def h_val(mdds, h, my_map, solver=None):
+    if h == 1:  # icbs - h_cg
         return h_cg(mdds)
     elif h == 2:  # icbs - h_dg
         return h_dg(mdds)
-    elif h == 3: #icbs - h_wdg
-        return h_wdg(mdds, my_map)
-    else: #icbs
+    elif h == 3:  # icbs - h_wdg
+        return h_wdg(mdds, my_map, solver)
+    else:  # icbs
         return 0
 
 
@@ -212,6 +212,9 @@ class CBSSolver(object):
         """ Finds paths for all agents from their start locations to their goal locations
 
         disjoint    - use disjoint splitting or not
+        h       - heuristic type
+        p       - print debug messages
+        stats   - statistics info of the function
         """
         self.start_time = timer.time()
 
@@ -220,12 +223,14 @@ class CBSSolver(object):
         # paths         - list of paths, one for each agent
         #               [[(x11, y11), (x12, y12), ...], [(x21, y21), (x22, y22), ...], ...]
         # collisions     - list of collisions in paths
-        root = {'cost': 0,
-                'constraints': [],
-                'paths': [],
-                'collisions': [],
-                'h_value': 0,
-                'mdds': []}
+        root = {
+            'cost': 0,
+            'constraints': [],
+            'paths': [],
+            'collisions': [],
+            'h_value': 0,
+            'mdds': [],
+        }
 
         for i in range(self.num_of_agents):  # Find initial path for each agent
             mddi = mdd(self.my_map, self.starts[i], self.goals[i], self.heuristics[i],
@@ -237,35 +242,23 @@ class CBSSolver(object):
                 raise BaseException('No solutions')
             root['paths'].append(path)
 
-        #ccg = cardinal_conflict_graph(root['mdds'])
-        root['h_value'] = h_val(root['mdds'], h, self.my_map)
-        #print(root['h_value'])
+        root['h_value'] = h_val(root['mdds'], h, self.my_map, solver=self.find_solution)
         root['cost'] = get_sum_of_cost(root['paths'])
-
         root['collisions'] = detect_collisions(root['paths'])
         self.push_node(root)
 
         ##############################
-        # Task 3.3: High-Level Search
-        #           Repeat the following as long as the open list is not empty:
-        #             1. Get the next node from the open list (you can use self.pop_node()
-        #             2. If this node has no collision, return solution
-        #             3. Otherwise, choose the first collision and convert to a list of constraints (using your
-        #                standard_splitting function). Add a new child node to your open list for each constraint
-        # Ensure to create a copy of any objects that your child nodes might
-        # inherit
+        # High-Level Search
         while len(self.open_list) > 0:
-            # for ii in range(0):
             parent = self.pop_node()
 
             if len(parent['collisions']) == 0:
                 if p:
                     self.print_results(parent)
-                    print('Paths:',parent['paths'])
+                    print('Paths:', parent['paths'])
                     self.write_stats(stats, parent)
                 return parent['paths']
 
-            #collision = parent['collisions'][0]
             collision = get_collision(parent['collisions'], parent['mdds'])
 
             constraints = disjoint_splitting(collision) \
@@ -281,13 +274,12 @@ class CBSSolver(object):
                     'mdds': parent['mdds'].copy(),
                 }
 
-                #############################################
                 agents = paths_violate_constraint(constraint, child['paths'])
                 if constraint['agent'] not in agents:
                     agents.append(constraint['agent'])
+
                 has_solution = True
                 for i in agents:
-                    #path = a_star(self.my_map, self.starts[i], self.goals[i], self.heuristics[i], i, child['constraints'])
                     mddi = mdd(
                         self.my_map,
                         self.starts[i],
@@ -311,9 +303,6 @@ class CBSSolver(object):
                     self.push_node(child)
 
         raise BaseException('No solutions')
-        #############################
-        # self.print_results(root)
-        # return root['paths']
 
     def write_stats(self, stats, node):
         stats['cpu_time'] = timer.time() - self.start_time
@@ -330,27 +319,30 @@ class CBSSolver(object):
         print("Generated nodes: {}".format(self.num_of_generated))
 
 
-
-# mdds: [mdd1, mdd2, ..., mddn]
-# mdd: [[node1], [node2, node3], ... [noden]]
-# node: {'loc': (1,2), 'child':[(),()]}
 def cardinal_conflict_graph(mdds):
-    ccg = {agent:[] for agent in range(len(mdds))}
+    """
+    mdds: [mdd1, mdd2, ..., mddn]
+    mdd: [[node1], [node2, node3], ... [noden]]
+    node: {'loc': (1,2), 'child':[(),()]}
+    """
+    ccg = {agent: [] for agent in range(len(mdds))}
     for i in range(len(mdds)):
         mdd1 = mdds[i]
-        for j in range(i+1,len(mdds)):
+        for j in range(i + 1, len(mdds)):
             mdd2 = mdds[j]
             for timestep in range(max(len(mdd1), len(mdd2))):
-                    # vertex conflict
-                if len(get_mdd_nodes(mdd1,timestep)) == len(get_mdd_nodes(mdd2,timestep)) == 1 and get_mdd_nodes(mdd1,timestep)[0]['loc'] == get_mdd_nodes(mdd2,timestep)[0]['loc']:
+                # vertex conflict
+                if len(get_mdd_nodes(mdd1, timestep)) == len(get_mdd_nodes(mdd2, timestep)) == 1 \
+                        and get_mdd_nodes(mdd1, timestep)[0]['loc'] == get_mdd_nodes(mdd2, timestep)[0]['loc']:
                     #print("vertex",i," ", j, " ",timestep)
                     ccg[i].append(j)
                     ccg[j].append(i)
                     break
                 # edge conflict
                 if timestep > 0:
-                    if len(get_mdd_nodes(mdd1,timestep-1)) == len(get_mdd_nodes(mdd1,timestep)) == len(get_mdd_nodes(mdd2,timestep-1)) == len(get_mdd_nodes(mdd2,timestep)) == 1 and\
-                        get_mdd_nodes(mdd1,timestep-1)[0]['loc'] == get_mdd_nodes(mdd2,timestep)[0]['loc'] and get_mdd_nodes(mdd1,timestep)[0]['loc'] == get_mdd_nodes(mdd2,timestep-1)[0]['loc']:
+                    if len(get_mdd_nodes(mdd1, timestep - 1)) == len(get_mdd_nodes(mdd1, timestep)) == len(get_mdd_nodes(mdd2, timestep - 1)) == len(get_mdd_nodes(mdd2, timestep)) == 1 \
+                            and get_mdd_nodes(mdd1, timestep - 1)[0]['loc'] == get_mdd_nodes(mdd2, timestep)[0]['loc'] \
+                            and get_mdd_nodes(mdd1, timestep)[0]['loc'] == get_mdd_nodes(mdd2, timestep - 1)[0]['loc']:
                         #print("edge",i," ",j," ",timestep)
                         ccg[i].append(j)
                         ccg[j].append(i)
@@ -358,7 +350,7 @@ def cardinal_conflict_graph(mdds):
     print(ccg)
     return ccg
 
-            
+
 def is_cardinal_conflict(collision, mdds):
     a1 = collision['a1']
     a2 = collision['a2']
@@ -368,16 +360,17 @@ def is_cardinal_conflict(collision, mdds):
     mdd2 = mdds[a2]
 
     # vertex conflict
-    if len(loc) == 1 and len(get_mdd_nodes(mdd1,timestep)) == len(get_mdd_nodes(mdd2,timestep)) == 1 and\
-        get_mdd_nodes(mdd1,timestep)[0]['loc'] == get_mdd_nodes(mdd2,timestep)[0]['loc'] == loc:
+    if len(loc) == 1 and len(get_mdd_nodes(mdd1, timestep)) == len(get_mdd_nodes(mdd2, timestep)) == 1 and\
+            get_mdd_nodes(mdd1, timestep)[0]['loc'] == get_mdd_nodes(mdd2, timestep)[0]['loc'] == loc:
         return True
     # edge conflict
     if timestep > 0 and len(loc) == 2:
-        if len(get_mdd_nodes(mdd1,timestep-1)) == len(get_mdd_nodes(mdd1,timestep)) == len(get_mdd_nodes(mdd2,timestep-1)) == len(get_mdd_nodes(mdd2,timestep)) == 1 and\
-            get_mdd_nodes(mdd1,timestep-1)[0]['loc'] == get_mdd_nodes(mdd2,timestep)[0]['loc'] == loc[0] and\
-            get_mdd_nodes(mdd1,timestep)[0]['loc'] == get_mdd_nodes(mdd2,timestep-1)[0]['loc'] == loc[1]:
+        if len(get_mdd_nodes(mdd1, timestep - 1)) == len(get_mdd_nodes(mdd1, timestep)) == len(get_mdd_nodes(mdd2, timestep - 1)) == len(get_mdd_nodes(mdd2, timestep)) == 1 and\
+                get_mdd_nodes(mdd1, timestep - 1)[0]['loc'] == get_mdd_nodes(mdd2, timestep)[0]['loc'] == loc[0] and\
+                get_mdd_nodes(mdd1, timestep)[0]['loc'] == get_mdd_nodes(mdd2, timestep - 1)[0]['loc'] == loc[1]:
             return True
     return False
+
 
 def is_non_cardinal_conflict(collision, mdds):
 
@@ -389,14 +382,16 @@ def is_non_cardinal_conflict(collision, mdds):
     mdd2 = mdds[a2]
 
     # vertex conflict
-    if len(loc) == 1 and len(get_mdd_nodes(mdd1,timestep)) == len(get_mdd_nodes(mdd2,timestep)) == 1 or get_mdd_nodes(mdd1,timestep)[0]['loc'] == get_mdd_nodes(mdd2,timestep)[0]['loc'] == loc:
+    if len(loc) == 1 and len(get_mdd_nodes(mdd1, timestep)) == len(get_mdd_nodes(mdd2, timestep)
+                                                                   ) == 1 or get_mdd_nodes(mdd1, timestep)[0]['loc'] == get_mdd_nodes(mdd2, timestep)[0]['loc'] == loc:
         return False
     # edge conflict
     if timestep > 0 and len(loc) == 2:
-        if len(get_mdd_nodes(mdd1,timestep-1)) == len(get_mdd_nodes(mdd1,timestep)) == 1 and get_mdd_nodes(mdd1,timestep-1)[0]['loc'] == loc[0] and get_mdd_nodes(mdd1,timestep)[0]['loc']  == loc[1] or\
-        len(get_mdd_nodes(mdd2,timestep-1)) == len(get_mdd_nodes(mdd2,timestep)) == 1 and get_mdd_nodes(mdd2,timestep)[0]['loc'] == loc[0] and get_mdd_nodes(mdd2,timestep-1)[0]['loc'] == loc[1]:
+        if len(get_mdd_nodes(mdd1, timestep - 1)) == len(get_mdd_nodes(mdd1, timestep)) == 1 and get_mdd_nodes(mdd1, timestep - 1)[0]['loc'] == loc[0] and get_mdd_nodes(mdd1, timestep)[0]['loc'] == loc[1] or\
+                len(get_mdd_nodes(mdd2, timestep - 1)) == len(get_mdd_nodes(mdd2, timestep)) == 1 and get_mdd_nodes(mdd2, timestep)[0]['loc'] == loc[0] and get_mdd_nodes(mdd2, timestep - 1)[0]['loc'] == loc[1]:
             return False
     return True
+
 
 def h_cg(mdds):
     ccg = cardinal_conflict_graph(mdds)
@@ -405,18 +400,19 @@ def h_cg(mdds):
     sorted_ccg_vertex = sorted(ccg, key=lambda v: len(ccg[v]), reverse=True)
     vertex = sorted_ccg_vertex[0]
 
-    while len(ccg[vertex]) > 0: 
+    while len(ccg[vertex]) > 0:
         h += 1
         # label the vertex and remove it from ccg
         del ccg[vertex]
         for v in ccg:
             if vertex in ccg[v]:
                 ccg[v].remove(vertex)
-        sorted_ccg_vertex = sorted(ccg, key=lambda v: len(ccg[v]), reverse=True)
+        sorted_ccg_vertex = sorted(
+            ccg, key=lambda v: len(
+                ccg[v]), reverse=True)
         vertex = sorted_ccg_vertex[0]
-    #print(h)
+    # print(h)
     return h
-
 
 
 def isDependency(mdd1, mdd2):
@@ -439,11 +435,11 @@ def isDependency(mdd1, mdd2):
         # if curr1 == goal1 and curr2 == goal2: #exist a path without conflict
         #     return False
 
-        #print(bigCurr)
+        # print(bigCurr)
         if bigCurr not in visited:
             visited.append(bigCurr)
 
-        if curr1 == curr2: # vertex conflict
+        if curr1 == curr2:  # vertex conflict
             continue
 
         for node1 in get_mdd_nodes(mdd1, t):
@@ -453,34 +449,34 @@ def isDependency(mdd1, mdd2):
             if node2['loc'] == curr2:
                 children2 = node2['child']
 
-
         for child1 in children1:
             for child2 in children2:
-                if child1 is None and child2 is None: #exist a path without conflict
+                if child1 is None and child2 is None:  # exist a path without conflict
                     return False
-                if child1 is None: # append a dummy goal node if length of mdd1 is shorter
+                if child1 is None:  # append a dummy goal node if length of mdd1 is shorter
                     child1 = curr1
-                if child2 is None: # append a dummy goal node if length of mdd2 is shorter 
+                if child2 is None:  # append a dummy goal node if length of mdd2 is shorter
                     child2 = curr2
-                if child1 == curr2 and child2 == curr1:  #edge conflict
+                if child1 == curr2 and child2 == curr1:  # edge conflict
                     continue
-                bigChild =(child1, child2, t+1)
+                bigChild = (child1, child2, t + 1)
                 if bigChild not in visited:
-                    stack.append(bigChild)                        
+                    stack.append(bigChild)
     return True
- 
-        
+
+
 def dependency_graph(mdds):
-    dg = {agent:[] for agent in range(len(mdds))}
+    dg = {agent: [] for agent in range(len(mdds))}
     for i in range(len(mdds)):
         mdd1 = mdds[i]
-        for j in range(i+1,len(mdds)):
+        for j in range(i + 1, len(mdds)):
             mdd2 = mdds[j]
             if isDependency(mdd1, mdd2):
                 dg[i].append(j)
                 dg[j].append(i)
-    #print(dg)
+    # print(dg)
     return dg
+
 
 def h_dg(mdds):
     dg = dependency_graph(mdds)
@@ -489,7 +485,7 @@ def h_dg(mdds):
     sorted_ccg_vertex = sorted(dg, key=lambda v: len(dg[v]), reverse=True)
     vertex = sorted_ccg_vertex[0]
 
-    while len(dg[vertex]) > 0: 
+    while len(dg[vertex]) > 0:
         h += 1
         # label the vertex and remove it from ccg
         del dg[vertex]
@@ -498,7 +494,7 @@ def h_dg(mdds):
                 dg[v].remove(vertex)
         sorted_ccg_vertex = sorted(dg, key=lambda v: len(dg[v]), reverse=True)
         vertex = sorted_ccg_vertex[0]
-    #print(h)
+    # print(h)
     return h
 
 
@@ -519,39 +515,44 @@ def weight(mdd1, mdd2, my_map):
     #print(conflict_free_costs, " ", optimal_costs, " ", w)
     return w
 
-# Example:
-# format: {vertex: {neighbour_vertex1: edge_weight, neighbour_vertex2: edge_weight}}
-# ewdg = {0: {1:1},
-#         1: {0:1},
-#         2: {3:1},
-#         3: {2:1},
-#         4: {5:4, 6:1},
-#         5: {4:4, 6:4},
-#         6: {4:1, 5:4}}
 
-# format: {vertex: [num_of_neighbours, sum_of_edge_weight]}
-# parse_ewdg = {0:[1,1],
-#               1:[1,1],
-#               2:[1,1],
-#               3:[1,1],
-#               4:[2,5],
-#               5:[2,8],
-#               6:[2,5]}
 def edge_weighted_dependency_graph(mdds, my_map):
-    ewdg = {agent:dict() for agent in range(len(mdds))}
+    """
+    Example:
+    format: {vertex: {neighbour_vertex1: edge_weight, neighbour_vertex2: edge_weight}}
+    ewdg = {0: {1:1},
+            1: {0:1},
+            2: {3:1},
+            3: {2:1},
+            4: {5:4, 6:1},
+            5: {4:4, 6:4},
+            6: {4:1, 5:4}}
+    """
+    ewdg = {agent: dict() for agent in range(len(mdds))}
     for i in range(len(mdds)):
         mdd1 = mdds[i]
-        for j in range(i+1,len(mdds)):
+        for j in range(i + 1, len(mdds)):
             mdd2 = mdds[j]
             w = weight(mdd1, mdd2, my_map)
-            if w > 0: #a1 and a2 are dependent
+            if w > 0:  # a1 and a2 are dependent
                 ewdg[i][j] = w
                 ewdg[j][i] = w
-    #print(ewdg)
+    # print(ewdg)
     return ewdg
 
+
 def parse_ewdg(ewdg):
-    table = {vertex:[] for vertex in range(len(ewdg))}
+    """
+    format: {vertex: [num_of_neighbours, sum_of_edge_weight]}
+    parse_ewdg = {0:[1,1],
+                  1:[1,1],
+                  2:[1,1],
+                  3:[1,1],
+                  4:[2,5],
+                  5:[2,8],
+                  6:[2,5]}
+    """
+    table = {vertex: [] for vertex in range(len(ewdg))}
 
     for k in table.keys():
         num_of_edges = len(ewdg[k])
@@ -559,42 +560,56 @@ def parse_ewdg(ewdg):
         for v in ewdg[k].values():
             total_weight += v
         table[k] = [num_of_edges, total_weight]
-    
+
     return table
 
+
 def h_wdg(mdds, my_map):
-    ewdg = edge_weighted_dependency_graph(mdds, my_map)             
+    ewdg = edge_weighted_dependency_graph(mdds, my_map)
     d = parse_ewdg(ewdg)
-    #print(d)
-    #ewMVC = [0 for i in range(7)] #Edge-weighted Minimun Vertex Cover(MVC) for debug
+    # print(d)
+    # ewMVC = [0 for i in range(7)] #Edge-weighted Minimun Vertex Cover(MVC)
+    # for debug
     h = 0
-    d = {k: v for k, v in sorted(d.items(), key=lambda item: (item[1][0], item[1][1]), reverse=True)}
-    curr = next(iter(d)) #first key in sorted dict
-    
+    d = {
+        k: v for k, v in sorted(
+            d.items(),
+            key=lambda item: (item[1][0], item[1][1]), reverse=True
+        )
+    }
+    curr = next(iter(d))  # first key in sorted dict
+
     while d[curr][0] != 0:
         h += 1
         #ewMVC[curr] += 1
         remove_edge = []
         for neighbour in ewdg[curr].keys():
-            ewdg[curr][neighbour] -= 1 # decrease the edge weight by 1
+            ewdg[curr][neighbour] -= 1  # decrease the edge weight by 1
             ewdg[neighbour][curr] -= 1
 
             if ewdg[curr][neighbour] == 0:
                 remove_edge.append([curr, neighbour])
 
-        for i in range(len(remove_edge)): 
+        for i in range(len(remove_edge)):
             v1 = remove_edge[i][0]
-            v2 = remove_edge[i][1]  
+            v2 = remove_edge[i][1]
             del ewdg[v1][v2]
             del ewdg[v2][v1]
-        
+
         # re-generate d
         d = parse_ewdg(ewdg)
         # sort d
-        d = {k: v for k, v in sorted(d.items(), key=lambda item: (item[1][0], item[1][1]), reverse=True)}
-        
-        # get the vertex with the most (num of edges, total weight) 
-        curr = next(iter(d)) #first key in sorted dict
+        d = {
+            k: v for k,
+            v in sorted(
+                d.items(),
+                key=lambda item: (
+                    item[1][0],
+                    item[1][1]),
+                reverse=True)}
 
-    #print(ewMVC)
+        # get the vertex with the most (num of edges, total weight)
+        curr = next(iter(d))  # first key in sorted dict
+
+    # print(ewMVC)
     return h
