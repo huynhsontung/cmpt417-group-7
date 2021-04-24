@@ -167,25 +167,21 @@ def compare_nodes(n1, n2):
     return n1['g_val'] + n1['h_val'] < n2['g_val'] + n2['h_val']
 
 
-def build_mdd(path, mdd):
-    for timestep in range(len(path)):
-        if timestep == len(path) - 1:
-            child = None
-        else:
-            child = path[timestep + 1]
+def build_mdd(paths):
+    path_len = len(paths[0])
+    mdd = []
 
-        new_node = True
-        for node in mdd[timestep]:
-            if path[timestep] == node['loc']:
-                new_node = False
-                if child not in node['child']:
-                    node['child'].append(child)
-                break
+    for ts in range(path_len):
+        locs = [p[ts] for p in paths]
+        locs_set = set(locs)
+        matchings = {l: [i for i, x in enumerate(locs) if x == l] for l in locs_set}
+        mdd_ts = [{
+            'loc': l,
+            'child': list(set([paths[i][ts + 1] for i in matchings[l]])) if ts != path_len - 1 else []
+        } for l in locs_set]
 
-        if new_node:
-            curr = {'loc': path[timestep], 'child': [child]}
-            mdd[timestep].append(curr)
-
+        mdd.append(mdd_ts)
+    
     return mdd
 
 
@@ -197,8 +193,8 @@ def mdd(my_map, start_loc, goal_loc, h_values, agent, constraints):
         constraints - constraints defining where robot should or cannot go at each timestep
     """
 
-    mdd = []
-    min_len = -1
+    paths = []
+    optimal_len = -1
     open_list = []
     closed_list = dict()
     earliest_goal_timestep = 0
@@ -239,21 +235,14 @@ def mdd(my_map, start_loc, goal_loc, h_values, agent, constraints):
             break
 
         if curr['loc'] == goal_loc and curr['timestep'] >= earliest_goal_timestep:
-            if min_len == -1:
-                min_len = len(path)
-                mdd = [[] for i in range(min_len)]
+            if optimal_len == -1:
+                optimal_len = len(path)
 
-            if len(path) > min_len:
-                return mdd
+            # Repeat until path is no longer optimal
+            if len(path) > optimal_len:
+                break
 
-            mdd = build_mdd(path, mdd)
-
-            # update the closed list
-            p_list = []
-            for i in range(1, min_len):
-                p_list.append(path[i])
-                if (path[i], i, tuple(p_list)) in closed_list:
-                    del closed_list[(path[i], i, tuple(p_list))]
+            paths.append(path)
             continue
 
         for dir in range(5):
@@ -286,16 +275,29 @@ def mdd(my_map, start_loc, goal_loc, h_values, agent, constraints):
                 closed_list[key] = child
                 push_node(open_list, child, child_path)
 
+    if paths:
+        return build_mdd(paths)
+
     return None  # Failed to find solutions
 
 
 def find_mdd_path(mdd):
-    if mdd is None:
+    if not mdd:
         return None
 
     path = []
-    for timestep in range(len(mdd)):
-        path.append(get_mdd_nodes(mdd, timestep)[0]['loc'])
+    
+    for i, mdd_ts in enumerate(mdd):
+        if i == 0:
+            path.append(mdd_ts[0]['loc'])
+            child = mdd_ts[0]['child'][0]
+        elif i == len(mdd) - 1:
+            path.append(child)
+        else:
+            node = [x for x in mdd_ts if x['loc'] == child][0]
+            path.append(node['loc'])
+            child = node['child'][0]
+
     return path
 
 
