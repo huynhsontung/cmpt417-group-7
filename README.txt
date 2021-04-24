@@ -1,11 +1,14 @@
 icbs: (bug)
-python run_experiments.py --instance instances\exp.txt --solver CBS
+python run_experiments.py --instance instances\exp.txt
 
 cg:
-python run_experiments.py --instance instances\exp.txt --solver CBS --h 1
+python run_experiments.py --instance instances\exp.txt --h 1
 
 cg: (disjoint)
-python run_experiments.py --instance instances\exp.txt --solver CBS --h 1 --disjoint
+python run_experiments.py --instance instances\exp.txt --h 1 --disjoint
 
 dg:
-python run_experiments.py --instance instances\exp.txt --solver CBS --h 2
+python run_experiments.py --instance instances\exp.txt --h 2
+
+wdg:
+python run_experiments.py --instance instances\exp.txt --h 2
