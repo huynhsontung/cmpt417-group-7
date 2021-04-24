@@ -105,8 +105,8 @@ def disjoint_splitting(collision):
 
     constraints = []
     agent = collision['a1']
-    if random.randint(0, 1) == 1:
-        agent = collision['a2']
+    # if random.randint(0, 1) == 1:
+    #     agent = collision['a2']
     constraint1 = {
         'agent': agent,
         'loc': collision['loc'],
@@ -124,23 +124,24 @@ def disjoint_splitting(collision):
     return constraints
 
 
-def paths_violate_constraint(positive_constraint, paths):
+def paths_violate_constraint(constraint, paths):
     #########################################
     # Task 4.3: Return a list of agent ids of agents that violate a given positive constraint
 
     ids = []
     for i in range(len(paths)):
-        if i == positive_constraint['agent']:
+        if i == constraint['agent']:
             continue
         # vertex constraint
-        if [get_location(paths[i], positive_constraint['timestep'])
-            ] == positive_constraint['loc']:
+        if [get_location(paths[i], constraint['timestep'])] == constraint['loc']:
             ids.append(i)
             continue
         # edge constraint
-        if positive_constraint['timestep']:
-            if [get_location(paths[i], positive_constraint['timestep']), get_location(
-                    paths[i], positive_constraint['timestep'] - 1)] == positive_constraint['loc']:
+        if constraint['timestep']:
+            if [
+                get_location(paths[i], constraint['timestep']), 
+                get_location(paths[i], constraint['timestep'] - 1)
+            ] == constraint['loc']:
                 ids.append(i)
                 continue
 
@@ -242,67 +243,39 @@ class CBSSolver(object):
             #collision = parent['collisions'][0]
             collision = get_collision(parent['collisions'], parent['mdds'])
 
-            constraints = standard_splitting(collision)
-            if disjoint:
-                constraints = disjoint_splitting(collision)
+            constraints = disjoint_splitting(collision) if disjoint else standard_splitting(collision)
 
             for constraint in constraints:
                 child = {
                     'cost': 0,
-                    'constraints': [],
-                    'paths': [],
+                    'constraints': parent['constraints'] + [constraint],
+                    'paths': parent['paths'].copy(),
                     'collisions': [],
                     'h_value': 0,
-                    'mdds': [],
+                    'mdds': parent['mdds'].copy(),
                 }
-                for p_constraint in parent['constraints']:
-                    child['constraints'].append(p_constraint)
-                child['constraints'].append(constraint)
-                for p_path in parent['paths']:
-                    child['paths'].append(p_path)
-                for mddi in parent['mdds']:
-                    child['mdds'].append(mddi)
 
                 #############################################
-                if disjoint:
-                    if constraint['positive']:
-                        not_add_child = False
-                        for i in paths_violate_constraint(constraint, child['paths']):
+                agents = paths_violate_constraint(constraint, child['paths']) + [constraint['agent']]
+                has_solution = True
+                for i in agents:
+                    #path = a_star(self.my_map, self.starts[i], self.goals[i], self.heuristics[i], i, child['constraints'])
+                    mddi = mdd(
+                        self.my_map,
+                        self.starts[i],
+                        self.goals[i],
+                        self.heuristics[i],
+                        i,
+                        child['constraints'])
+                    path = find_mdd_path(mddi)
+                    if path:
+                        child['paths'][i] = path
+                        child['mdds'][i] = mddi
+                    else:
+                        has_solution = False
+                        break
 
-                            #path = a_star(self.my_map, self.starts[i], self.goals[i], self.heuristics[i], i, child['constraints'])
-                            mddi = mdd(
-                                self.my_map,
-                                self.starts[i],
-                                self.goals[i],
-                                self.heuristics[i],
-                                i,
-                                child['constraints'])
-                            path = find_mdd_path(mddi)
-                            if path is None:
-                                not_add_child = True
-                                break
-                            child['paths'][i] = path
-                            child['mdds'][i] = mddi
-                        if not_add_child:
-                            continue
-
-                ##############################################
-
-                a_i = constraint['agent']
-                # path = a_star(self.my_map, self.starts[a_i], self.goals[a_i], self.heuristics[a_i],
-                #           a_i, child['constraints'])
-                mddi = mdd(
-                    self.my_map,
-                    self.starts[a_i],
-                    self.goals[a_i],
-                    self.heuristics[a_i],
-                    a_i,
-                    child['constraints'])
-                path = find_mdd_path(mddi)
-                if path is not None:
-
-                    child['paths'][a_i] = path
-                    child['mdds'][a_i] = mddi
+                if has_solution:
                     child['collisions'] = detect_collisions(child['paths'])
                     ccg = cardinal_conflict_graph(child['mdds'])
                     child['h_value'] = h_cg(ccg)
