@@ -539,14 +539,14 @@ def h_wdg(mdds, my_map):
     ewdg = edge_weighted_dependency_graph(mdds, my_map)             
     d = parse_ewdg(ewdg)
     #print(d)
-    ewMVC = [0 for i in range(7)]
+    #ewMVC = [0 for i in range(7)] #Edge-weighted Minimun Vertex Cover(MVC) for debug
     h = 0
     d = {k: v for k, v in sorted(d.items(), key=lambda item: (item[1][0], item[1][1]), reverse=True)}
     curr = next(iter(d)) #first key in sorted dict
     
     while d[curr][0] != 0:
         h += 1
-        ewMVC[curr] += 1
+        #ewMVC[curr] += 1
         remove_edge = []
         for neighbour in ewdg[curr].keys():
             ewdg[curr][neighbour] -= 1 # decrease the edge weight by 1
@@ -569,4 +569,5 @@ def h_wdg(mdds, my_map):
         # get the vertex with the most (num of edges, total weight) 
         curr = next(iter(d)) #first key in sorted dict
 
+    #print(ewMVC)
     return h
