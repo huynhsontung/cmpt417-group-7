@@ -147,18 +147,18 @@ def is_constrained(curr_loc, next_loc, next_time, constraint_table):
 #     return curr
 
 
-def push_node(open_list, node):
+def push_node(open_list, node, path):
     key_tup = (
         node['g_val'] + node['h_val'],
         node['h_val'],
-        node['loc'],
-        tuple(get_path(node)),
-        node)
+        tuple(path),
+        node,
+    )
     heapq.heappush(open_list, key_tup)
 
 
 def pop_node(open_list):
-    _, _, _, _, curr = heapq.heappop(open_list)
+    _, _, _, curr = heapq.heappop(open_list)
     return curr
 
 
@@ -227,19 +227,18 @@ def mdd(my_map, start_loc, goal_loc, h_values, agent, constraints):
         'parent': None,
         'timestep': 0,
     }
-    push_node(open_list, root)
-    closed_list[(root['loc'], root['timestep'])] = root
+    root_path = (start_loc,)
+    push_node(open_list, root, root_path)
+    closed_list[(root['loc'], 0, root_path)] = root
 
     while len(open_list) > 0:
-
         curr = pop_node(open_list)
+        path = get_path(curr)
 
-        if get_sum_of_cost(get_path(curr)) > max_path_length:
+        if len(path) > max_path_length:
             break
 
         if curr['loc'] == goal_loc and curr['timestep'] >= earliest_goal_timestep:
-            path = get_path(curr)
-
             if min_len == -1:
                 min_len = len(path)
                 mdd = [[] for i in range(min_len)]
@@ -262,8 +261,10 @@ def mdd(my_map, start_loc, goal_loc, h_values, agent, constraints):
             if child_loc[0] < 0 or child_loc[0] >= len(my_map) \
                or child_loc[1] < 0 or child_loc[1] >= len(my_map[0]):
                 continue
+
             if my_map[child_loc[0]][child_loc[1]]:  # hits obstacle
                 continue
+
             child = {
                 'loc': child_loc,
                 'g_val': curr['g_val'] + 1,
@@ -274,14 +275,16 @@ def mdd(my_map, start_loc, goal_loc, h_values, agent, constraints):
             if is_constrained(curr['loc'], child['loc'], child['timestep'], constraint_table):
                 continue
             
-            if (child['loc'], child['timestep'], tuple(get_path(child))) in closed_list: 
-                existing_node = closed_list[(child['loc'], child['timestep'], tuple(get_path(child)))] 
+            child_path = tuple(path + [child_loc])
+            key = (child['loc'], child['timestep'], child_path)
+            if key in closed_list: 
+                existing_node = closed_list[key] 
                 if compare_nodes(child, existing_node):
-                    closed_list[(child['loc'], child['timestep'], tuple(get_path(child)))] = child
-                    push_node(open_list, child)
+                    closed_list[key] = child
+                    push_node(open_list, child, child_path)
             else:
-                closed_list[(child['loc'], child['timestep'], tuple(get_path(child)))] = child
-                push_node(open_list, child)
+                closed_list[key] = child
+                push_node(open_list, child, child_path)
 
     return None  # Failed to find solutions
 
