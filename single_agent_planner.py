@@ -1,4 +1,5 @@
 import heapq
+import time as timer
 from pprint import pprint
 
 
@@ -192,6 +193,7 @@ def mdd(my_map, start_loc, goal_loc, h_values, agent, constraints):
         agent       - the agent that is being re-planned
         constraints - constraints defining where robot should or cannot go at each timestep
     """
+    TIME_LIMIT = 0.1
 
     paths = []
     optimal_len = -1
@@ -227,6 +229,7 @@ def mdd(my_map, start_loc, goal_loc, h_values, agent, constraints):
     push_node(open_list, root, root_path)
     closed_list[(root['loc'], 0, root_path)] = root
 
+    start_time = timer.time()
     while len(open_list) > 0:
         curr = pop_node(open_list)
         path = get_path(curr)
@@ -243,6 +246,9 @@ def mdd(my_map, start_loc, goal_loc, h_values, agent, constraints):
                 break
 
             paths.append(path)
+            if timer.time() - start_time > TIME_LIMIT:
+                break
+
             continue
 
         for dir in range(5):
@@ -265,7 +271,8 @@ def mdd(my_map, start_loc, goal_loc, h_values, agent, constraints):
                 continue
             
             child_path = tuple(path + [child_loc])
-            key = (child['loc'], child['timestep'], child_path)
+            prev_locs = (curr['parent']['loc'], curr['loc']) if curr['parent'] else (curr['loc'],)
+            key = (child['loc'], child['timestep'], prev_locs)
             if key in closed_list: 
                 existing_node = closed_list[key] 
                 if compare_nodes(child, existing_node):
