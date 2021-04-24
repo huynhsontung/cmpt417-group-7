@@ -4,7 +4,8 @@ import glob
 from pathlib import Path
 from cbs import CBSSolver
 from visualize import Animation
-from single_agent_planner import get_sum_of_cost
+
+SOLVER = "CBS"
 
 def print_mapf_instance(my_map, starts, goals):
     print('Start locations')
@@ -73,6 +74,8 @@ if __name__ == '__main__':
                         help='Use batch output instead of animation')
     parser.add_argument('--disjoint', action='store_true', default=False,
                         help='Use the disjoint splitting')
+    parser.add_argument('--h', type=int, default=0,
+                        help='The heuristic to use (one of: {none,cg,dg,wdg}), defaults to none')
 
     args = parser.parse_args()
 
@@ -89,7 +92,7 @@ if __name__ == '__main__':
         print("***Run CBS***")
         cbs = CBSSolver(my_map, starts, goals)
         cbs_stats = {}
-        paths = cbs.find_solution(args.disjoint, stats=cbs_stats)
+        paths = cbs.find_solution(args.disjoint, h=args.h, stats=cbs_stats)
 
         result_file.write("{},{},{},{},{}\n".format(
             file, 

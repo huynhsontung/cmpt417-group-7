@@ -1,7 +1,9 @@
 import time as timer
 import heapq
 import random
-from single_agent_planner import compute_heuristics, get_location, get_sum_of_cost, mdd, cardinal_conflict_graph, h_cg, find_mdd_path, is_cardinal_conflict, is_non_cardinal_conflict
+from single_agent_planner import compute_heuristics, get_location, get_sum_of_cost, mdd, cardinal_conflict_graph, h_cg, find_mdd_path, is_cardinal_conflict, is_non_cardinal_conflict,\
+ h_dg, h_wdg
+
 from pprint import pprint
 
 
@@ -147,6 +149,16 @@ def paths_violate_constraint(constraint, paths):
 
     return ids
 
+def h_val(mdds, h):
+    
+    if h == 1: #icbs - h_cg
+        return h_cg(mdds)
+    elif h == 2: #icbs - h_dg
+        return h_dg(mdds)
+    elif h == 3: #icbs - h_wdg
+        return h_wdg(mdds)
+    else: #icbs
+        return 0
 
 class CBSSolver(object):
     """The high-level search of CBS."""
@@ -184,7 +196,7 @@ class CBSSolver(object):
         self.num_of_expanded += 1
         return node
 
-    def find_solution(self, disjoint=True, stats={}):
+    def find_solution(self, disjoint=True, h=0, stats={}):
         """ Finds paths for all agents from their start locations to their goal locations
 
         disjoint    - use disjoint splitting or not
@@ -206,7 +218,7 @@ class CBSSolver(object):
 
         for i in range(self.num_of_agents):  # Find initial path for each agent
             mddi = mdd(self.my_map, self.starts[i], self.goals[i], self.heuristics[i],
-                       i, [{'agent': 0, 'loc': [(3, 3)], 'timestep': 3}])
+                        i, [])# [{'agent': 0, 'loc': [(3,3)], 'timestep': 3}])
             path = find_mdd_path(mddi)
             root['mdds'].append(mddi)
 
@@ -214,8 +226,9 @@ class CBSSolver(object):
                 raise BaseException('No solutions')
             root['paths'].append(path)
 
-        ccg = cardinal_conflict_graph(root['mdds'])
-        root['h_value'] = h_cg(ccg)
+        #ccg = cardinal_conflict_graph(root['mdds'])
+        root['h_value'] = h_val(root['mdds'], h)
+        print(root['h_value'])
         root['cost'] = get_sum_of_cost(root['paths'])
 
         root['collisions'] = detect_collisions(root['paths'])
@@ -231,7 +244,7 @@ class CBSSolver(object):
         # Ensure to create a copy of any objects that your child nodes might
         # inherit
         while len(self.open_list) > 0:
-
+        #for ii in range(0):
             parent = self.pop_node()
 
             if len(parent['collisions']) == 0:
@@ -277,8 +290,8 @@ class CBSSolver(object):
 
                 if has_solution:
                     child['collisions'] = detect_collisions(child['paths'])
-                    ccg = cardinal_conflict_graph(child['mdds'])
-                    child['h_value'] = h_cg(ccg)
+                    #ccg = cardinal_conflict_graph(child['mdds'])
+                    child['h_value'] = h_val(child['mdds'], h)
                     child['cost'] = get_sum_of_cost(child['paths'])
                     self.push_node(child)
 
