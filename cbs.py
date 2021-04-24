@@ -285,7 +285,8 @@ class CBSSolver(object):
 
                 #############################################
                 agents = paths_violate_constraint(constraint, child['paths'])
-                agents.append(constraint['agent'])
+                if constraint['agent'] not in agents:
+                    agents.append(constraint['agent'])
                 has_solution = True
                 for i in agents:
                     #path = a_star(self.my_map, self.starts[i], self.goals[i], self.heuristics[i], i, child['constraints'])
