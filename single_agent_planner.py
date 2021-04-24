@@ -27,8 +27,10 @@ def compute_heuristics(my_map, goal):
         for dir in range(4):
             child_loc = move(loc, dir)
             child_cost = cost + 1
-            if child_loc[0] < 0 or child_loc[0] >= len(my_map) \
-                or child_loc[1] < 0 or child_loc[1] >= len(my_map[0]):
+            if child_loc[0] < 0 \
+                or child_loc[0] >= len(my_map) \
+                or child_loc[1] < 0 \
+                or child_loc[1] >= len(my_map[0]):
                 continue
             if my_map[child_loc[0]][child_loc[1]]:
                 continue
@@ -175,14 +177,16 @@ def build_mdd(paths):
     for ts in range(path_len):
         locs = [p[ts] for p in paths]
         locs_set = set(locs)
-        matchings = {l: [i for i, x in enumerate(locs) if x == l] for l in locs_set}
+        matchings = {
+            l: [i for i, x in enumerate(locs) if x == l] for l in locs_set
+        }
         mdd_ts = [{
             'loc': l,
             'child': list(set([paths[i][ts + 1] for i in matchings[l]])) if ts != path_len - 1 else []
         } for l in locs_set]
 
         mdd.append(mdd_ts)
-    
+
     return mdd
 
 
@@ -267,14 +271,17 @@ def mdd(my_map, start_loc, goal_loc, h_values, agent, constraints):
                 'parent': curr,
                 'timestep': curr['timestep'] + 1,
             }
-            if is_constrained(curr['loc'], child['loc'], child['timestep'], constraint_table):
+            if is_constrained(curr['loc'], child['loc'],
+                              child['timestep'], constraint_table):
                 continue
-            
+
             child_path = tuple(path + [child_loc])
-            prev_locs = (curr['parent']['loc'], curr['loc']) if curr['parent'] else (curr['loc'],)
+            prev_locs = (
+                curr['parent']['loc'], curr['loc']
+            ) if curr['parent'] else (curr['loc'],)
             key = (child['loc'], child['timestep'], prev_locs)
-            if key in closed_list: 
-                existing_node = closed_list[key] 
+            if key in closed_list:
+                existing_node = closed_list[key]
                 if compare_nodes(child, existing_node):
                     closed_list[key] = child
                     push_node(open_list, child, child_path)
@@ -293,7 +300,7 @@ def find_mdd_path(mdd):
         return None
 
     path = []
-    
+
     for i, mdd_ts in enumerate(mdd):
         if i == 0:
             path.append(mdd_ts[0]['loc'])
@@ -371,19 +378,20 @@ def is_non_cardinal_conflict(collision, mdds):
 
     # vertex conflict
     if len(loc) == 1 \
-        and len(get_mdd_nodes(mdd1, timestep)) == len(get_mdd_nodes(mdd2, timestep)) == 1 \
-        or get_mdd_nodes(mdd1, timestep)[0]['loc'] == get_mdd_nodes(mdd2, timestep)[0]['loc'] == loc:
+            and len(get_mdd_nodes(mdd1, timestep)) == len(get_mdd_nodes(mdd2, timestep)) == 1 \
+            or get_mdd_nodes(mdd1, timestep)[0]['loc'] == get_mdd_nodes(mdd2, timestep)[0]['loc'] == loc:
         return False
     # edge conflict
     if timestep > 0 and len(loc) == 2:
         if len(get_mdd_nodes(mdd1, timestep - 1)) == len(get_mdd_nodes(mdd1, timestep)) == 1 \
-            and get_mdd_nodes(mdd1, timestep - 1)[0]['loc'] == loc[0] \
-            and get_mdd_nodes(mdd1, timestep)[0]['loc'] == loc[1] \
-            or len(get_mdd_nodes(mdd2, timestep - 1)) == len(get_mdd_nodes(mdd2, timestep)) == 1 \
-            and get_mdd_nodes(mdd2, timestep)[0]['loc'] == loc[0] \
-            and get_mdd_nodes(mdd2, timestep - 1)[0]['loc'] == loc[1]:
+                and get_mdd_nodes(mdd1, timestep - 1)[0]['loc'] == loc[0] \
+                and get_mdd_nodes(mdd1, timestep)[0]['loc'] == loc[1] \
+                or len(get_mdd_nodes(mdd2, timestep - 1)) == len(get_mdd_nodes(mdd2, timestep)) == 1 \
+                and get_mdd_nodes(mdd2, timestep)[0]['loc'] == loc[0] \
+                and get_mdd_nodes(mdd2, timestep - 1)[0]['loc'] == loc[1]:
             return False
     return True
+
 
 def h_cg(mdds):
     ccg = cardinal_conflict_graph(mdds)
@@ -405,7 +413,6 @@ def h_cg(mdds):
         vertex = sorted_ccg_vertex[0]
     # print(h)
     return h
-
 
 
 def isDependency(mdd1, mdd2):
@@ -431,7 +438,7 @@ def isDependency(mdd1, mdd2):
         if bigCurr not in visited:
             visited.append(bigCurr)
 
-        if curr1 == curr2: # vertex conflict
+        if curr1 == curr2:  # vertex conflict
             continue
 
         for node1 in get_mdd_nodes(mdd1, t):
@@ -441,23 +448,22 @@ def isDependency(mdd1, mdd2):
             if node2['loc'] == curr2:
                 children2 = node2['child']
 
-
         for child1 in children1:
             for child2 in children2:
-                if child1 is None and child2 is None: #exist a path without conflict
+                if child1 is None and child2 is None:  # exist a path without conflict
                     return False
-                if child1 is None: # append a dummy goal node if length of mdd1 is shorter
+                if child1 is None:  # append a dummy goal node if length of mdd1 is shorter
                     child1 = curr1
-                if child2 is None: # append a dummy goal node if length of mdd2 is shorter 
+                if child2 is None:  # append a dummy goal node if length of mdd2 is shorter
                     child2 = curr2
-                if child1 == curr2 and child2 == curr1:  #edge conflict
+                if child1 == curr2 and child2 == curr1:  # edge conflict
                     continue
-                bigChild =(child1, child2, t+1)
+                bigChild = (child1, child2, t + 1)
                 if bigChild not in visited:
-                    stack.append(bigChild)                        
+                    stack.append(bigChild)
     return True
- 
-        
+
+
 def dependency_graph(mdds):
     dg = {}
     for i in range(len(mdds)):
@@ -470,8 +476,9 @@ def dependency_graph(mdds):
             mdd2 = mdds[j]
             if isDependency(mdd1, mdd2):
                 dg[i].append(j)
-    #print(dg)
+    # print(dg)
     return dg
+
 
 def h_dg(mdds):
     dg = dependency_graph(mdds)
@@ -480,7 +487,7 @@ def h_dg(mdds):
     sorted_ccg_vertex = sorted(dg, key=lambda v: len(dg[v]), reverse=True)
     vertex = sorted_ccg_vertex[0]
 
-    while len(dg[vertex]) > 0: 
+    while len(dg[vertex]) > 0:
         h += 1
         # label the vertex and remove it from ccg
         del dg[vertex]
@@ -489,8 +496,9 @@ def h_dg(mdds):
                 dg[v].remove(vertex)
         sorted_ccg_vertex = sorted(dg, key=lambda v: len(dg[v]), reverse=True)
         vertex = sorted_ccg_vertex[0]
-    #print(h)
+    # print(h)
     return h
+
 
 def h_wdg(mdds):
     pass

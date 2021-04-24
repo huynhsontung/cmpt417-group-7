@@ -1,8 +1,8 @@
 import time as timer
 import heapq
 import random
-from single_agent_planner import compute_heuristics, get_location, get_sum_of_cost, mdd, cardinal_conflict_graph, h_cg, find_mdd_path, is_cardinal_conflict, is_non_cardinal_conflict,\
- h_dg, h_wdg
+from single_agent_planner import compute_heuristics, get_location, get_sum_of_cost, mdd, h_cg, find_mdd_path, is_cardinal_conflict, is_non_cardinal_conflict,\
+    h_dg, h_wdg
 
 from pprint import pprint
 
@@ -12,20 +12,22 @@ def detect_collision(path1, path2):
     # Task 3.1: Return all the collisions that occurs between two robot paths (or None if there is no collision)
     #           There are two types of collisions: vertex collision and edge collision.
     #           A vertex collision occurs if both robots occupy the same location at the same timestep
-    #           An edge collision occurs if the robots swap their location at the same timestep.
-    # You should use "get_location(path, t)" to get the location of a robot at time t.
+    # An edge collision occurs if the robots swap their location at the same
+    # timestep.
     collisions = []
     length = max(len(path1), len(path2))
     for t in range(length):
         location1 = get_location(path1, t)
         location2 = get_location(path2, t)
-        if location1 == location2:  # Vertex collision
+        # Vertex collision
+        if location1 == location2:
             collision = {'loc': [location1], 'timestep': t}
             collisions.append(collision)
         if t:
             pre_loc1 = get_location(path1, t - 1)
             pre_loc2 = get_location(path2, t - 1)
-            if [pre_loc1, location1] == [location2, pre_loc2]:  # Edge collision
+            # Edge collision
+            if [pre_loc1, location1] == [location2, pre_loc2]:
                 collision = {'loc': [pre_loc1, location1], 'timestep': t}
                 collisions.append(collision)
     return collisions
@@ -128,20 +130,23 @@ def disjoint_splitting(collision):
 
 def paths_violate_constraint(constraint, paths):
     #########################################
-    # Task 4.3: Return a list of agent ids of agents that violate a given positive constraint
+    # Task 4.3: Return a list of agent ids of agents that violate a given
+    # positive constraint
 
     ids = []
     for i in range(len(paths)):
         if i == constraint['agent']:
             continue
         # vertex constraint
-        if [get_location(paths[i], constraint['timestep'])] == constraint['loc']:
+        if [
+            get_location(paths[i], constraint['timestep'])
+        ] == constraint['loc']:
             ids.append(i)
             continue
         # edge constraint
         if constraint['timestep']:
             if [
-                get_location(paths[i], constraint['timestep']), 
+                get_location(paths[i], constraint['timestep']),
                 get_location(paths[i], constraint['timestep'] - 1)
             ] == constraint['loc']:
                 ids.append(i)
@@ -149,16 +154,18 @@ def paths_violate_constraint(constraint, paths):
 
     return ids
 
+
 def h_val(mdds, h):
-    
-    if h == 1: #icbs - h_cg
+
+    if h == 1:  # icbs - h_cg
         return h_cg(mdds)
-    elif h == 2: #icbs - h_dg
+    elif h == 2:  # icbs - h_dg
         return h_dg(mdds)
-    elif h == 3: #icbs - h_wdg
+    elif h == 3:  # icbs - h_wdg
         return h_wdg(mdds)
-    else: #icbs
+    else:  # icbs
         return 0
+
 
 class CBSSolver(object):
     """The high-level search of CBS."""
@@ -186,7 +193,14 @@ class CBSSolver(object):
             self.heuristics.append(compute_heuristics(my_map, goal))
 
     def push_node(self, node):
-        heapq.heappush(self.open_list, (node['cost'] + node['h_value'], node['h_value'], len(node['collisions']), self.num_of_generated, node))
+        tup = (
+            node['cost'] + node['h_value'],
+            node['h_value'],
+            len(node['collisions']),
+            self.num_of_generated,
+            node
+        )
+        heapq.heappush(self.open_list, tup)
         #print("Generate node {}".format(self.num_of_generated))
         self.num_of_generated += 1
 
@@ -218,7 +232,7 @@ class CBSSolver(object):
 
         for i in range(self.num_of_agents):  # Find initial path for each agent
             mddi = mdd(self.my_map, self.starts[i], self.goals[i], self.heuristics[i],
-                        i, [])# [{'agent': 0, 'loc': [(3,3)], 'timestep': 3}])
+                       i, [])  # [{'agent': 0, 'loc': [(3,3)], 'timestep': 3}])
             path = find_mdd_path(mddi)
             root['mdds'].append(mddi)
 
@@ -244,7 +258,7 @@ class CBSSolver(object):
         # Ensure to create a copy of any objects that your child nodes might
         # inherit
         while len(self.open_list) > 0:
-        #for ii in range(0):
+            # for ii in range(0):
             parent = self.pop_node()
 
             if len(parent['collisions']) == 0:
@@ -256,7 +270,8 @@ class CBSSolver(object):
             #collision = parent['collisions'][0]
             collision = get_collision(parent['collisions'], parent['mdds'])
 
-            constraints = disjoint_splitting(collision) if disjoint else standard_splitting(collision)
+            constraints = disjoint_splitting(collision) \
+                if disjoint else standard_splitting(collision)
 
             for constraint in constraints:
                 child = {
@@ -269,7 +284,8 @@ class CBSSolver(object):
                 }
 
                 #############################################
-                agents = paths_violate_constraint(constraint, child['paths']) + [constraint['agent']]
+                agents = paths_violate_constraint(constraint, child['paths'])
+                agents.append(constraint['agent'])
                 has_solution = True
                 for i in agents:
                     #path = a_star(self.my_map, self.starts[i], self.goals[i], self.heuristics[i], i, child['constraints'])
