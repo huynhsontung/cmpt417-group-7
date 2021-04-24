@@ -283,6 +283,10 @@ def mdd(my_map, start_loc, goal_loc, h_values, agent, constraints):
 
     while len(open_list) > 0:
     
+
+        # for n in open_list:
+        #     print('loc ',n[2], 'parent ',n[3][:-1], 'timestep ', len(n[3])-1)
+        # print('\n')
         curr = pop_node(open_list)
            
         if get_sum_of_cost(get_path(curr)) > max_path_length:
@@ -291,12 +295,13 @@ def mdd(my_map, start_loc, goal_loc, h_values, agent, constraints):
 
         if curr['loc'] == goal_loc and curr['timestep'] >= earliest_goal_timestep:
             path = get_path(curr)
- 
+            #print(path)
             if min_len == -1:
                 min_len = len(path)
                 mdd = [[] for i in range(min_len)]
 
             if len(path) > min_len:
+                #pprint(mdd)
                 return mdd
 
             mdd = build_mdd(path, mdd)
@@ -417,7 +422,8 @@ def is_non_cardinal_conflict(collision, mdds):
             return False
     return True
 
-def h_cg(ccg):
+def h_cg(mdds):
+    ccg = cardinal_conflict_graph(mdds)
     h = 0
     # find the vertex with maximum edges
     sorted_ccg_vertex = sorted(ccg, key=lambda v: len(ccg[v]), reverse=True)
@@ -436,8 +442,90 @@ def h_cg(ccg):
     return h
 
 
-def dependency_graph(mdds):
-    pass
 
-def h_dg(dg):
+def isDependency(mdd1, mdd2):
+    visited = []
+    stack = []
+    root1 = mdd1[0][0]['loc']
+    root2 = mdd2[0][0]['loc']
+    # goal1 = mdd1[-1][0]['loc']
+    # goal2 = mdd2[-1][0]['loc']
+
+    bigRoot = (root1, root2, 0)
+    stack.append(bigRoot)
+
+    while(len(stack)):
+        bigCurr = stack.pop()
+        curr1 = bigCurr[0]
+        curr2 = bigCurr[1]
+        t = bigCurr[2]
+
+        # if curr1 == goal1 and curr2 == goal2: #exist a path without conflict
+        #     return False
+
+        if bigCurr not in visited:
+            visited.append(bigCurr)
+
+        if curr1 == curr2: # vertex conflict
+            continue
+
+        for node1 in get_mdd_nodes(mdd1, t):
+            if node1['loc'] == curr1:
+                children1 = node1['child']
+        for node2 in get_mdd_nodes(mdd2, t):
+            if node2['loc'] == curr2:
+                children2 = node2['child']
+
+
+        for child1 in children1:
+            for child2 in children2:
+                if child1 is None and child2 is None: #exist a path without conflict
+                    return False
+                if child1 is None: # append a dummy goal node if length of mdd1 is shorter
+                    child1 = curr1
+                if child2 is None: # append a dummy goal node if length of mdd2 is shorter 
+                    child2 = curr2
+                if child1 == curr2 and child2 == curr1:  #edge conflict
+                    continue
+                bigChild =(child1, child2, t+1)
+                if bigChild not in visited:
+                    stack.append(bigChild)                        
+    return True
+ 
+        
+def dependency_graph(mdds):
+    dg = {}
+    for i in range(len(mdds)):
+        mdd1 = mdds[i]
+        if i not in dg:
+            dg[i] = []
+        for j in range(len(mdds)):
+            if i == j:
+                continue
+            mdd2 = mdds[j]
+            if isDependency(mdd1, mdd2):
+                dg[i].append(j)
+    #print(dg)
+    return dg
+
+def h_dg(mdds):
+    dg = dependency_graph(mdds)
+    h = 0
+    # find the vertex with maximum edges
+    sorted_ccg_vertex = sorted(dg, key=lambda v: len(dg[v]), reverse=True)
+    vertex = sorted_ccg_vertex[0]
+
+    while len(dg[vertex]) > 0: 
+        h += 1
+        # label the vertex and remove it from ccg
+        del dg[vertex]
+        for v in dg:
+            if vertex in dg[v]:
+                dg[v].remove(vertex)
+        sorted_ccg_vertex = sorted(dg, key=lambda v: len(dg[v]), reverse=True)
+        vertex = sorted_ccg_vertex[0]
+    #print(h)
+    return h
+
+def h_wdg(mdds):
     pass
