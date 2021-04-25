@@ -194,7 +194,7 @@ def mdd(my_map, start_loc, goal_loc, h_values, agent, constraints):
     open_list = []
     closed_list = dict()
     earliest_goal_timestep = 0
-    h_value = h_values[start_loc]
+    h_value = h_values.get(start_loc, None)
     constraint_table = build_constraint_table(constraints, agent)
 
     if constraint_table:
@@ -219,6 +219,9 @@ def mdd(my_map, start_loc, goal_loc, h_values, agent, constraints):
         'parent': None,
         'timestep': 0,
     }
+    if my_map[start_loc[0]][start_loc[1]] or my_map[goal_loc[0]][goal_loc[1]]:
+        return [[root]]
+
     root_path = (start_loc,)
     push_node(open_list, root, root_path)
     closed_list[(root['loc'], 0, root_path)] = root
@@ -282,12 +285,12 @@ def mdd(my_map, start_loc, goal_loc, h_values, agent, constraints):
     if paths:
         return build_mdd(paths)
 
-    return None  # Failed to find solutions
+    return [[root]]  # Failed to find solutions
 
 
 def find_mdd_path(mdd):
-    if not mdd:
-        return None
+    if len(mdd) == 1:
+        return [mdd[0][0]['loc']]
 
     path = []
 

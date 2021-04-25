@@ -240,9 +240,6 @@ class CBSSolver(object):
                        i, [])  # [{'agent': 0, 'loc': [(3,3)], 'timestep': 3}])
             path = find_mdd_path(mddi)
             root['mdds'].append(mddi)
-
-            if path is None:
-                raise BaseException('No solutions')
             root['paths'].append(path)
 
         root['h_value'] = h_val(root['mdds'], h, solver=functools.partial(CBSSolver, self.my_map))
