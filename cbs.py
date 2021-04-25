@@ -112,8 +112,8 @@ def disjoint_splitting(collision):
 
     constraints = []
     agent = collision['a1']
-    # if random.randint(0, 1) == 1:
-    #     agent = collision['a2']
+    if random.randint(0, 1) == 1:
+        agent = collision['a2']
     constraint1 = {
         'agent': agent,
         'loc': collision['loc'],
@@ -211,7 +211,7 @@ class CBSSolver(object):
         self.num_of_expanded += 1
         return node
 
-    def find_solution(self, disjoint=True, h=0, p=True, stats={}):
+    def find_solution(self, disjoint=True, h=0, p=True, stats={}, timeout=300):
         """ Finds paths for all agents from their start locations to their goal locations
 
         disjoint    - use disjoint splitting or not
@@ -251,6 +251,10 @@ class CBSSolver(object):
         # High-Level Search
         while len(self.open_list) > 0:
             parent = self.pop_node()
+            if timer.time() - self.start_time > timeout:
+                self.write_stats(stats, parent)
+                print("Timeout!")
+                return parent['paths']
 
             if len(parent['collisions']) == 0:
                 if p:
