@@ -36,43 +36,65 @@ def cardinal_conflict_graph(mdds):
 def is_cardinal_conflict(collision, mdds):
     a1 = collision['a1']
     a2 = collision['a2']
-    timestep = collision['timestep']
+    t = collision['timestep']
     loc = collision['loc']
     mdd1 = mdds[a1]
     mdd2 = mdds[a2]
 
     # vertex conflict
-    if len(loc) == 1 and len(get_mdd_nodes(mdd1, timestep)) == len(get_mdd_nodes(mdd2, timestep)) == 1 and\
-            get_mdd_nodes(mdd1, timestep)[0]['loc'] == get_mdd_nodes(mdd2, timestep)[0]['loc'] == loc:
-        return True
+    # The collision is derived from path, and path is derived from mdd. Hence the conflict location is guaranteed in both mdd1 and mdd2 at timestep t.
+    # We only need to check if there is only one node in mdd1 and mdd2 at timestep t
+    if len(loc) == 1:
+        if len(get_mdd_nodes(mdd1,t)) == len(get_mdd_nodes(mdd2,t)) == 1:
+            return True
     # edge conflict
-    if timestep > 0 and len(loc) == 2:
-        if len(get_mdd_nodes(mdd1, timestep - 1)) == len(get_mdd_nodes(mdd1, timestep)) == len(get_mdd_nodes(mdd2, timestep - 1)) == len(get_mdd_nodes(mdd2, timestep)) == 1 and\
-                get_mdd_nodes(mdd1, timestep - 1)[0]['loc'] == get_mdd_nodes(mdd2, timestep)[0]['loc'] == loc[0] and\
-                get_mdd_nodes(mdd1, timestep)[0]['loc'] == get_mdd_nodes(mdd2, timestep - 1)[0]['loc'] == loc[1]:
+    if len(loc) == 2: # timestep t > 0 is guaranteed
+        if len(get_mdd_nodes(mdd1,t-1)) == len(get_mdd_nodes(mdd1,t)) == len(get_mdd_nodes(mdd2,t-1)) == len(get_mdd_nodes(mdd2,t)) == 1:
             return True
     return False
 
-
-def is_non_cardinal_conflict(collision, mdds):
-
+def is_semi_cardinal_conflict(collision, mdds):
     a1 = collision['a1']
     a2 = collision['a2']
-    timestep = collision['timestep']
+    t = collision['timestep']
     loc = collision['loc']
     mdd1 = mdds[a1]
     mdd2 = mdds[a2]
 
     # vertex conflict
-    if len(loc) == 1 and len(get_mdd_nodes(mdd1, timestep)) == len(get_mdd_nodes(mdd2, timestep)
-                                                                   ) == 1 or get_mdd_nodes(mdd1, timestep)[0]['loc'] == get_mdd_nodes(mdd2, timestep)[0]['loc'] == loc:
-        return False
+    # The collision is derived from path, and path is derived from mdd. Hence the conflict location is guaranteed in both mdd1 and mdd2 at timestep t.
+    # We only need to check if there is only one node in mdd1 and mdd2 at timestep t
+    if len(loc) == 1:
+        if len(get_mdd_nodes(mdd1,t)) == 1 and len(get_mdd_nodes(mdd2,t)) > 1 or\
+            len(get_mdd_nodes(mdd1,t)) > 1 and len(get_mdd_nodes(mdd2,t)) == 1:
+            return True
     # edge conflict
-    if timestep > 0 and len(loc) == 2:
-        if len(get_mdd_nodes(mdd1, timestep - 1)) == len(get_mdd_nodes(mdd1, timestep)) == 1 and get_mdd_nodes(mdd1, timestep - 1)[0]['loc'] == loc[0] and get_mdd_nodes(mdd1, timestep)[0]['loc'] == loc[1] or\
-                len(get_mdd_nodes(mdd2, timestep - 1)) == len(get_mdd_nodes(mdd2, timestep)) == 1 and get_mdd_nodes(mdd2, timestep)[0]['loc'] == loc[0] and get_mdd_nodes(mdd2, timestep - 1)[0]['loc'] == loc[1]:
-            return False
-    return True
+    if len(loc) == 2: # timestep t > 0 is guaranteed
+        if len(get_mdd_nodes(mdd1,t-1)) == len(get_mdd_nodes(mdd1,t)) == 1 and (len(get_mdd_nodes(mdd2,t-1)) > 1 or len(get_mdd_nodes(mdd2,t)) > 1) or\
+            len(get_mdd_nodes(mdd2,t-1)) == len(get_mdd_nodes(mdd2,t)) == 1 and (len(get_mdd_nodes(mdd1,t-1)) > 1 or len(get_mdd_nodes(mdd1,t)) > 1):
+            return True
+    return False
+
+def is_non_cardinal_conflict(collision, mdds):
+    a1 = collision['a1']
+    a2 = collision['a2']
+    t = collision['timestep']
+    loc = collision['loc']
+    mdd1 = mdds[a1]
+    mdd2 = mdds[a2]
+
+    # vertex conflict
+    # The collision is derived from path, and path is derived from mdd. Hence the conflict location is guaranteed in both mdd1 and mdd2 at timestep t.
+    # We only need to check if there is only one node in mdd1 and mdd2 at timestep t
+    if len(loc) == 1:
+        if len(get_mdd_nodes(mdd1,t)) > 1 and len(get_mdd_nodes(mdd2,t)) > 1:
+            return True
+    # edge conflict
+    if len(loc) == 2: # timestep t > 0 is guaranteed
+        if (len(get_mdd_nodes(mdd1,t-1)) > 1 or len(get_mdd_nodes(mdd1,t)) > 1) and\
+            (len(get_mdd_nodes(mdd2,t-1)) > 1 or len(get_mdd_nodes(mdd2,t)) > 1):
+            return True
+    return False
 
 
 def h_cg(mdds):

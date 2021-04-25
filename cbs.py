@@ -2,7 +2,7 @@ import time as timer
 import heapq
 import random
 import functools
-from heuristics import h_cg, h_dg, h_wdg, is_cardinal_conflict, is_non_cardinal_conflict
+from heuristics import h_cg, h_dg, h_wdg, is_cardinal_conflict, is_semi_cardinal_conflict, is_non_cardinal_conflict
 from single_agent_planner import compute_heuristics, get_location, get_sum_of_cost, mdd, find_mdd_path
 
 from pprint import pprint
@@ -61,7 +61,7 @@ def get_collision(collisions, mdds):
             return collision
         elif is_semi_cardinal_conflict(collision, mdds):
             semi_cardinal_conflict = collision
-        else:
+        else: #non cardinal conflict
             non_cardinal_conflict = collision
     
     if semi_cardinal_conflict is not None:
