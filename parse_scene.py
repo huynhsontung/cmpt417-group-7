@@ -24,10 +24,10 @@ with open(SCENE_PATH) as scene_file:
 
 for i in range(2, AGENTS + 1):
     with open(os.path.join(OUT_PATH, '{}_{}'.format(map_name, i)), 'w') as out_file:
-        out_file.write('%d\n' % height)
-        out_file.write('%d\n' % width)
+        out_file.write('{} {}\n'.format(height, width))
         out_file.writelines(map)
         out_file.write('\n')
+        out_file.write('{}\n'.format(i))
         agents_lines = [' '.join(a) + '\n' for a in agents[:i]]
         out_file.writelines(agents_lines)
 

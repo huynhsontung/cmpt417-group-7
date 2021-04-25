@@ -29,7 +29,7 @@ def cardinal_conflict_graph(mdds):
                         ccg[i].append(j)
                         ccg[j].append(i)
                         break
-    print(ccg)
+    # print(ccg)
     return ccg
 
 

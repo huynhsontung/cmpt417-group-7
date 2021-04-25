@@ -152,16 +152,6 @@ def push_node(open_list, node, path):
     heapq.heappush(open_list, key_tup)
 
 
-def push_node(open_list, node, path):
-    key_tup = (
-        node['g_val'] + node['h_val'],
-        node['h_val'],
-        tuple(path),
-        node,
-    )
-    heapq.heappush(open_list, key_tup)
-
-
 def pop_node(open_list):
     _, _, _, curr = heapq.heappop(open_list)
     return curr
