@@ -1,17 +1,10 @@
 import heapq
-from enum import Enum
+import time as timer
+from pprint import pprint
 
-
-class Direction(Enum):
-    UP = (-1, 0)
-    DOWN = (1, 0)
-    LEFT = (0, -1)
-    RIGHT = (0, 1)
-    NONE = (0, 0)
-
-
-def move(loc: tuple[int, int], dir: Direction):
-    return loc[0] + dir.value[0], loc[1] + dir.value[1]
+def move(loc, dir):
+    directions = [(0, -1), (1, 0), (0, 1), (-1, 0), (0, 0)]
+    return loc[0] + directions[dir][0], loc[1] + directions[dir][1]
 
 
 def get_sum_of_cost(paths):
@@ -30,11 +23,13 @@ def compute_heuristics(my_map, goal):
     closed_list[goal] = root
     while len(open_list) > 0:
         (cost, loc, curr) = heapq.heappop(open_list)
-        for dir in Direction:
+        for dir in range(4):
             child_loc = move(loc, dir)
             child_cost = cost + 1
-            if child_loc[0] < 0 or child_loc[0] >= len(my_map) \
-               or child_loc[1] < 0 or child_loc[1] >= len(my_map[0]):
+            if child_loc[0] < 0 \
+                or child_loc[0] >= len(my_map) \
+                or child_loc[1] < 0 \
+                or child_loc[1] >= len(my_map[0]):
                 continue
             if my_map[child_loc[0]][child_loc[1]]:
                 continue
@@ -57,31 +52,40 @@ def compute_heuristics(my_map, goal):
 
 
 def build_constraint_table(constraints, agent):
-    constraint_table = dict()
-    # Constraints that always apply in future timesteps
-    constraint_table[-1] = []
+    ##########################
+    # Build constraint table whether there is a 'positive' key in constraints
+    # or not
+    table = dict()
     for constraint in constraints:
-        positive = 'positive' in constraint and constraint['positive']
-        if constraint['agent'] != agent and not positive:
-            continue
+        if "positive" not in constraint:
+            if constraint['agent'] == agent:
+                if (constraint['timestep'], False) not in table:
+                    table[(constraint['timestep'], False)] = []
+                table[(constraint['timestep'], False)].append(constraint['loc'])
+        else:
+            if constraint['agent'] != agent and constraint['positive'] == True:
+                if (constraint['timestep'], False) not in table:
+                    table[(constraint['timestep'], False)] = []
+                if len(constraint['loc']) == 1:
+                    table[(constraint['timestep'], False)].append(constraint['loc'])
+                if len(constraint['loc']) == 2:
+                    if (constraint['timestep']-1, False) not in table:
+                        table[(constraint['timestep']-1, False)] = []
+                    table[(constraint['timestep']-1, False)].append([constraint['loc'][0]])
+                    table[(constraint['timestep'], False)].append([constraint['loc'][1]])
+                    table[(constraint['timestep'], False)].append([constraint['loc'][1], constraint['loc'][0]])
 
-        if constraint['agent'] != agent and positive:
-            # Convert positive constraint to negative
-            constraint = dict(constraint)
-            constraint['positive'] = False
-            constraint['agent'] = agent
-            constraint['loc'] = constraint['loc'][::-1]
+            if constraint['agent'] == agent and constraint['positive'] == False:
+                if (constraint['timestep'], False) not in table:
+                    table[(constraint['timestep'], False)] = []
+                table[(constraint['timestep'], False)].append(constraint['loc'])
 
-        timestep = constraint['timestep']
-        if timestep not in constraint_table:
-            constraint_table[timestep] = []
+            if constraint['agent'] == agent and constraint['positive'] == True:
+                if (constraint['timestep'], True) not in table:
+                    table[(constraint['timestep'], True)] = []
+                table[(constraint['timestep'], True)].append(constraint['loc'])
 
-        constraint_table[timestep].append(constraint)
-
-        if 'stop' in constraint and constraint['stop']:
-            constraint_table[-1].append(constraint)
-
-    return constraint_table
+    return table
 
 
 def get_location(path, time):
@@ -91,6 +95,15 @@ def get_location(path, time):
         return path[time]
     else:
         return path[-1]  # wait at the goal location
+
+
+def get_mdd_nodes(mdd, time):
+    if time < 0:
+        return mdd[0]
+    elif time < len(mdd):
+        return mdd[time]
+    else:
+        return mdd[-1]
 
 
 def get_path(goal_node):
@@ -104,148 +117,199 @@ def get_path(goal_node):
 
 
 def is_constrained(curr_loc, next_loc, next_time, constraint_table):
-    constraints = []
-    for constraint in constraint_table[-1]:
-        if next_time < constraint['timestep']:
-            continue
 
-        constraints.append(constraint)
+    flag1 = False
+    flag2 = False
+    flag3 = False
 
-    if next_time in constraint_table:
-        constraints += constraint_table[next_time]
+    if (next_time, False) in constraint_table:
+        flag1 = ([next_loc] in constraint_table[(next_time, False)]) or (
+            [curr_loc, next_loc] in constraint_table[(next_time, False)])
+    else:
+        # check additional constraints
+        # the time that agents with higher priorities reached their goal
+        # locations
+        time = []
+        for t, loc in constraint_table.items():
+            if [next_loc] in loc and t[0] < 0:
+                time.append(t[0])
+        flag2 = any(next_time > -t for t in time)
 
-    for constraint in constraints:
-        positive = 'positive' in constraint and constraint['positive']
-        loc_constraint = constraint['loc']
-        match = (len(loc_constraint) == 1 and loc_constraint[0] == next_loc) \
-            or (len(loc_constraint) == 2 and (loc_constraint[0] == curr_loc and loc_constraint[1] == next_loc))
+    if (next_time, True) in constraint_table:
+        flag3 = ([next_loc] not in constraint_table[(next_time, True)]) and (
+            [curr_loc, next_loc] not in constraint_table[(next_time, True)])
 
-        # Check vertex and edge constraint
-        if match and not positive:
-            return True
-
-        # Not satisfying positive constraint
-        if not match and positive:
-            return True
-
-    return False
+    return flag1 or flag2 or flag3
 
 
-def push_node(open_list, node):
-    heapq.heappush(
-        open_list, (node['g_val'] + node['h_val'], node['h_val'], node['loc'], node))
+def push_node(open_list, node, path):
+    key_tup = (
+        node['g_val'] + node['h_val'],
+        node['h_val'],
+        tuple(path),
+        node,
+    )
+    heapq.heappush(open_list, key_tup)
+
+
+def push_node(open_list, node, path):
+    key_tup = (
+        node['g_val'] + node['h_val'],
+        node['h_val'],
+        tuple(path),
+        node,
+    )
+    heapq.heappush(open_list, key_tup)
 
 
 def pop_node(open_list):
     _, _, _, curr = heapq.heappop(open_list)
     return curr
 
-
-def pop_multiple_nodes(open_list):
-    cost, _, _, curr = heapq.heappop(open_list)
-    nodes = [curr]
-    while len(open_list) > 0:
-        next_cost, _, _, next = heapq.heappop(open_list)
-        if next_cost == cost:
-            nodes.append(next)
-        else:
-            push_node(open_list, next)
-            break
-
-    return nodes
-
-
 def compare_nodes(n1, n2):
     """Return true is n1 is better than n2."""
     return n1['g_val'] + n1['h_val'] < n2['g_val'] + n2['h_val']
 
 
-def a_star(my_map, start_loc, goal_loc, h_values, agent, constraints):
+def build_mdd(paths):
+    path_len = len(paths[0])
+    mdd = []
+
+    for ts in range(path_len):
+        locs = [p[ts] for p in paths]
+        locs_set = set(locs)
+        matchings = {
+            l: [i for i, x in enumerate(locs) if x == l] for l in locs_set
+        }
+        mdd_ts = [{
+            'loc': l,
+            'child': list(set([paths[i][ts + 1] for i in matchings[l]])) if ts != path_len - 1 else []
+        } for l in locs_set]
+
+        mdd.append(mdd_ts)
+
+    return mdd
+
+def mdd(my_map, start_loc, goal_loc, h_values, agent, constraints):
     """ my_map      - binary obstacle map
         start_loc   - start position
         goal_loc    - goal position
         agent       - the agent that is being re-planned
         constraints - constraints defining where robot should or cannot go at each timestep
     """
+    TIME_LIMIT = 0.1
 
-    env_size = len(my_map) * len(my_map[0])
+    paths = []
+    optimal_len = -1
     open_list = []
-    closed_list: dict[tuple[tuple, int], dict] = dict()
+    closed_list = dict()
     earliest_goal_timestep = 0
-    constraint_table = build_constraint_table(constraints, agent)
-    last_constraint_time = max(
-        list(constraint_table)) if constraint_table else 0
     h_value = h_values[start_loc]
+    constraint_table = build_constraint_table(constraints, agent)
+
+    if constraint_table:
+        t_occupy_goal = []
+        for time, loc in constraint_table.items():
+            if [goal_loc] in loc:
+                t_occupy_goal.append(time[0])
+
+        if t_occupy_goal:
+            earliest_goal_timestep = max(t_occupy_goal) + 1
+
+    max_path_length = 0
+    if constraint_table:
+        length = max(constraint_table)
+        max_path_length += length[0]
+    max_path_length += len(my_map) * len(my_map[0])
+
     root = {
         'loc': start_loc,
         'g_val': 0,
         'h_val': h_value,
         'parent': None,
-        'time': 0
+        'timestep': 0,
     }
-    push_node(open_list, root)
-    closed_list[(root['loc'], 0)] = root
+    root_path = (start_loc,)
+    push_node(open_list, root, root_path)
+    closed_list[(root['loc'], 0, root_path)] = root
 
-    mdd = []
-    path = None
+    start_time = timer.time()
     while len(open_list) > 0:
-        nodes = pop_multiple_nodes(open_list)
-        mdd_local: dict[tuple[tuple, int], dict] = dict()
-        for curr in nodes:
-            if curr['time'] > env_size * 5 + last_constraint_time:
-                # It's unlikely that there is a valid solution greater than 5
-                # times the env size
+        curr = pop_node(open_list)
+        path = get_path(curr)
+
+        if len(path) > max_path_length:
+            break
+
+        if curr['loc'] == goal_loc and curr['timestep'] >= earliest_goal_timestep:
+            if optimal_len == -1:
+                optimal_len = len(path)
+
+            # Repeat until path is no longer optimal
+            if len(path) > optimal_len:
                 break
 
-            if curr['loc'] == goal_loc and curr['time'] >= last_constraint_time:
-                path = get_path(curr)
+            paths.append(path)
+            if timer.time() - start_time > TIME_LIMIT:
+                break
+
+            continue
+
+        for dir in range(5):
+            child_loc = move(curr['loc'], dir)
+            if child_loc[0] < 0 or child_loc[0] >= len(my_map) \
+               or child_loc[1] < 0 or child_loc[1] >= len(my_map[0]):
                 continue
 
-            for dir in Direction:
-                child_loc = move(curr['loc'], dir)
-                out_of_bound = child_loc[0] >= len(my_map) \
-                    or child_loc[1] >= len(my_map[0]) \
-                    or child_loc[0] < 0 \
-                    or child_loc[1] < 0
-                if out_of_bound or my_map[child_loc[0]][child_loc[1]]:
-                    continue
+            if my_map[child_loc[0]][child_loc[1]]:  # hits obstacle
+                continue
 
-                child_h = h_values[child_loc]
-                child = {
-                    'loc': child_loc,
-                    'g_val': curr['g_val'] + 1,
-                    'h_val': child_h,
-                    'parent': curr,
-                    'time': curr['time'] + 1
-                }
+            child = {
+                'loc': child_loc,
+                'g_val': curr['g_val'] + 1,
+                'h_val': h_values[child_loc],
+                'parent': curr,
+                'timestep': curr['timestep'] + 1,
+            }
+            if is_constrained(curr['loc'], child['loc'],
+                              child['timestep'], constraint_table):
+                continue
 
-                if (child_loc, child_h) in mdd_local:
-                    mdd_local[(child_loc, child_h)]['prev'].append(curr['loc'])
-                else:
-                    mdd_local[(child_loc, child_h)] = {
-                        'loc': child_loc,
-                        'h': child_h,
-                        'prev': [curr['loc']]
-                    }
+            child_path = tuple(path + [child_loc])
+            prev_locs = (
+                curr['parent']['loc'], curr['loc']
+            ) if curr['parent'] else (curr['loc'],)
+            key = (child['loc'], child['timestep'], prev_locs)
+            if key in closed_list:
+                existing_node = closed_list[key]
+                if compare_nodes(child, existing_node):
+                    closed_list[key] = child
+                    push_node(open_list, child, child_path)
+            else:
+                closed_list[key] = child
+                push_node(open_list, child, child_path)
 
-                if is_constrained(curr['loc'], child['loc'],
-                                  child['time'], constraint_table):
-                    continue
-
-                space_time = (child['loc'], child['time'])
-                if space_time in closed_list:
-                    existing_node = closed_list[space_time]
-                    if compare_nodes(child, existing_node):
-                        closed_list[space_time] = child
-                        push_node(open_list, child)
-                else:
-                    closed_list[space_time] = child
-                    push_node(open_list, child)
-
-        if path:
-            return path, mdd
-
-        local_min = min(mdd_local.values(), key=lambda x: x['h'])
-        mdd.append([v for v in mdd_local.values() if v['h'] == local_min['h']])
+    if paths:
+        return build_mdd(paths)
 
     return None  # Failed to find solutions
+
+
+def find_mdd_path(mdd):
+    if not mdd:
+        return None
+
+    path = []
+
+    for i, mdd_ts in enumerate(mdd):
+        if i == 0:
+            path.append(mdd_ts[0]['loc'])
+            child = mdd_ts[0]['child'][0]
+        elif i == len(mdd) - 1:
+            path.append(child)
+        else:
+            node = [x for x in mdd_ts if x['loc'] == child][0]
+            path.append(node['loc'])
+            child = node['child'][0]
+
+    return path
