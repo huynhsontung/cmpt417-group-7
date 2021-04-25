@@ -59,14 +59,15 @@ def get_collision(collisions, mdds):
     for collision in collisions:
         if is_cardinal_conflict(collision, mdds):
             return collision
-        elif is_non_cardinal_conflict(collision, mdds):
-            non_cardinal_conflict = collision
-        else:
+        elif is_semi_cardinal_conflict(collision, mdds):
             semi_cardinal_conflict = collision
-    if semi_cardinal_conflict is None:
+        else:
+            non_cardinal_conflict = collision
+    
+    if semi_cardinal_conflict is not None:
+        return semi_cardinal_conflict
+    else:
         return non_cardinal_conflict
-
-    return semi_cardinal_conflict
 
 
 def standard_splitting(collision):
