@@ -47,7 +47,7 @@ def import_mapf_instance(filename):
         line = f.readline()
         my_map.append([])
         for cell in line:
-            if cell == '@' or cell == 'T':
+            if cell == '@':
                 my_map[-1].append(True)
             elif cell == '.':
                 my_map[-1].append(False)
