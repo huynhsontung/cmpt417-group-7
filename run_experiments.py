@@ -74,37 +74,40 @@ if __name__ == '__main__':
                         help='Use batch output instead of animation')
     parser.add_argument('--disjoint', action='store_true', default=False,
                         help='Use the disjoint splitting')
+    parser.add_argument('--repeats', type=int, default=1,
+                        help='Number of times to repeat on the instances')
     parser.add_argument('--h', type=int, default=0,
                         help='The heuristic to use (one of: {none,cg,dg,wdg}), defaults to none')
 
     args = parser.parse_args()
 
-
+    repeats = args.repeats if args.repeats > 0 else 1
     result_file = open("results.csv", "w", buffering=1)
     result_file.write("file,sum_cost,cpu_time,num_expanded,num_generated\n")
 
-    for file in sorted(glob.glob(args.instance)):
+    for i in range(repeats):
+        for file in sorted(glob.glob(args.instance)):
 
-        print("***Import an instance***")
-        my_map, starts, goals = import_mapf_instance(file)
-        print_mapf_instance(my_map, starts, goals)
+            print("***Import an instance***")
+            my_map, starts, goals = import_mapf_instance(file)
+            print_mapf_instance(my_map, starts, goals)
 
-        print("***Run CBS***")
-        cbs = CBSSolver(my_map, starts, goals)
-        cbs_stats = {}
-        paths = cbs.find_solution(args.disjoint, h=args.h, stats=cbs_stats)
+            print("***Run CBS***")
+            cbs = CBSSolver(my_map, starts, goals)
+            cbs_stats = {}
+            paths = cbs.find_solution(args.disjoint, h=args.h, stats=cbs_stats)
 
-        result_file.write("{},{},{},{},{}\n".format(
-            file, 
-            cbs_stats['sum_cost'],
-            cbs_stats['cpu_time'],
-            cbs_stats['num_expanded'],
-            cbs_stats['num_generated']))
+            result_file.write("{},{},{},{},{}\n".format(
+                file,
+                cbs_stats['sum_cost'],
+                cbs_stats['cpu_time'],
+                cbs_stats['num_expanded'],
+                cbs_stats['num_generated']))
 
 
-        if not args.batch:
-            print("***Test paths on a simulation***")
-            animation = Animation(my_map, starts, goals, paths)
-            # animation.save("output.mp4", 1.0)
-            animation.show()
+            if not args.batch and repeats == 1:
+                print("***Test paths on a simulation***")
+                animation = Animation(my_map, starts, goals, paths)
+                # animation.save("output.mp4", 1.0)
+                animation.show()
     result_file.close()
