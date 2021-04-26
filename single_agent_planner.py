@@ -173,7 +173,7 @@ def build_mdd(paths):
         }
         mdd_ts = [{
             'loc': l,
-            'child': list(set([paths[i][ts + 1] for i in matchings[l]])) if ts != path_len - 1 else []
+            'child': list(set([paths[i][ts + 1] for i in matchings[l]])) if ts != path_len - 1 else [None]
         } for l in locs_set]
 
         mdd.append(mdd_ts)
