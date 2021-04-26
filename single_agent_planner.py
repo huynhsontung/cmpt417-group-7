@@ -190,6 +190,7 @@ def mdd(my_map, start_loc, goal_loc, h_values, agent, constraints):
     TIME_LIMIT = 0.1
 
     paths = []
+    optimal_path = None
     optimal_len = -1
     open_list = []
     closed_list = dict()
@@ -233,6 +234,7 @@ def mdd(my_map, start_loc, goal_loc, h_values, agent, constraints):
 
         if curr['loc'] == goal_loc and curr['timestep'] >= earliest_goal_timestep:
             if optimal_len == -1:
+                optimal_path = path
                 optimal_len = len(path)
 
             # Repeat until path is no longer optimal
@@ -280,14 +282,17 @@ def mdd(my_map, start_loc, goal_loc, h_values, agent, constraints):
                 push_node(open_list, child, child_path)
 
     if paths:
-        return build_mdd(paths)
+        return optimal_path, build_mdd(paths)
 
-    return None  # Failed to find solutions
+    return None, None  # Failed to find solutions
 
 
 def find_mdd_path(mdd):
     if not mdd:
         return None
+
+    if len(mdd) == 1:
+        return [mdd[0][0]['loc']]
 
     path = []
 

@@ -196,9 +196,9 @@ class CBSSolver(object):
     def push_node(self, node):
         tup = (
             node['cost'] + node['h_value'],
-            node['h_value'],
             len(node['collisions']),
             self.num_of_generated,
+            node['h_value'],
             node
         )
         heapq.heappush(self.open_list, tup)
@@ -236,9 +236,8 @@ class CBSSolver(object):
         }
 
         for i in range(self.num_of_agents):  # Find initial path for each agent
-            mddi = mdd(self.my_map, self.starts[i], self.goals[i], self.heuristics[i],
+            path, mddi = mdd(self.my_map, self.starts[i], self.goals[i], self.heuristics[i],
                        i, [])  # [{'agent': 0, 'loc': [(3,3)], 'timestep': 3}])
-            path = find_mdd_path(mddi)
             root['mdds'].append(mddi)
 
             if path is None:
@@ -266,7 +265,7 @@ class CBSSolver(object):
                     self.write_stats(stats, parent)
                 return parent['paths']
 
-            collision = get_collision(parent['collisions'], parent['mdds'])
+            collision = get_collision(parent['collisions'], parent['mdds']) if h != 0 else parent['collisions'][0]
 
             constraints = disjoint_splitting(collision) \
                 if disjoint else standard_splitting(collision)
@@ -287,14 +286,14 @@ class CBSSolver(object):
 
                 has_solution = True
                 for i in agents:
-                    mddi = mdd(
+                    path, mddi = mdd(
                         self.my_map,
                         self.starts[i],
                         self.goals[i],
                         self.heuristics[i],
                         i,
                         child['constraints'])
-                    path = find_mdd_path(mddi)
+
                     if path:
                         child['paths'][i] = path
                         child['mdds'][i] = mddi
